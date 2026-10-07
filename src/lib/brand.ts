@@ -11,7 +11,6 @@ export const BRAND = {
   canonicalUrl: "https://cinch.vercel.app",
   xUrl: "https://x.com/CRYPTFRANI",
   repoUrl: "https://github.com/NSEVEjk0/cinch",
-  track: "Colosseum Crypto World's Fair — Tempo Track",
 } as const;
 
 /** The problem, stated plainly. */

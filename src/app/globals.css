@@ -293,6 +293,82 @@ a {
   border: 0;
 }
 
+/* ----------------------- responsive grid utilities ----------------------- */
+/*
+ * Opt-in column grids that collapse to one column on narrow screens. Used in
+ * place of inline gridTemplateColumns so every layout is phone-ready.
+ */
+.g2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+}
+.g3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+/* hero + app split: a weighted two-up that stacks on tablet. */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+}
+.split-wide {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 960px) {
+  .g3 {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .split,
+  .split-wide {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+}
+
+@media (max-width: 640px) {
+  .g2,
+  .g3 {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .shell {
+    padding: 0 18px;
+  }
+  .display {
+    letter-spacing: -0.02em;
+  }
+  .faq-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+}
+
+/* Horizontal scroll guard for very small screens. */
+@media (max-width: 480px) {
+  .btn {
+    padding: 11px 18px;
+    font-size: 0.9rem;
+  }
+  .btn-sm {
+    padding: 7px 10px;
+    font-size: 0.82rem;
+  }
+}
+
+html {
+  overflow-x: hidden;
+}
+body {
+  overflow-x: hidden;
+}
+
 .fade-in {
   animation: fade-in 0.5s ease both;
 }

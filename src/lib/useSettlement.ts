@@ -4,24 +4,37 @@
  * Signs and sends a cleared settlement as one atomic Tempo transaction.
  *
  * The settlement is a set of `transferWithMemo` calls across one or more token
- * contracts. We submit them together via EIP-5792 `wallet_sendCalls`, which
- * Tempo honours as a single atomic batch — every leg lands or none does. That
- * atomicity is what makes multilateral clearing safe: the signer can never end
- * up having paid into a settlement that left another party short.
+ * contracts. The whole set must be all-or-nothing — the signer can never end up
+ * having paid into a settlement that left another party short — so a multi-leg
+ * circle is submitted together.
  *
- * `wallet_sendCalls` is the right primitive here (not one tx per leg) precisely
- * because the whole circle must be all-or-nothing.
+ * Tempo specifics that matter here:
+ *  - A generic injected wallet cannot sign a Tempo batch envelope, so each leg
+ *    is sent as a plain `transferWithMemo` contract call. For a multi-leg
+ *    circle we use EIP-5792 `wallet_sendCalls`, which keeps one signature
+ *    without handing the wallet any Tempo-only field it would drop.
+ *  - The sync send resolves to a transaction *receipt*, not a bare hash string,
+ *    so the reference has to be read out of the result shape, not assumed.
+ *  - The wallet must be on the Tempo chain first, or the send throws a chain
+ *    mismatch; we switch (or add) the chain before sending.
  */
 
 import { useCallback, useState } from "react";
-import { useSendCalls, useSendTransaction } from "wagmi";
+import { useSendTransaction, useSendCalls, useSwitchChain, useChainId } from "wagmi";
 import type { TempoCall } from "./batch";
+import { DEFAULT_NETWORK } from "./tempo";
+import { tempoModeratoChain, tempoMainnetChain } from "./wagmi";
 
-export type SettleStatus = "idle" | "signing" | "sent" | "error";
+export type SettleStatus = "idle" | "switching" | "signing" | "sent" | "error";
+
+const targetChain =
+  DEFAULT_NETWORK.key === "mainnet" ? tempoMainnetChain : tempoModeratoChain;
 
 export function useSettlement() {
-  const { sendCallsAsync } = useSendCalls();
+  const chainId = useChainId();
+  const { switchChainAsync } = useSwitchChain();
   const { sendTransactionAsync } = useSendTransaction();
+  const { sendCallsAsync } = useSendCalls();
   const [status, setStatus] = useState<SettleStatus>("idle");
   const [txRef, setTxRef] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -34,36 +47,53 @@ export function useSettlement() {
         setTxRef("");
         return "";
       }
-      setStatus("signing");
       setError(null);
+
+      // 1) Make sure the wallet is on Tempo. A mismatch here is the most common
+      //    cause of a payment failing, so we handle it explicitly and clearly.
+      if (chainId !== targetChain.id) {
+        setStatus("switching");
+        try {
+          await switchChainAsync({ chainId: targetChain.id });
+        } catch {
+          setError(
+            `Your wallet needs to be on ${DEFAULT_NETWORK.name} to settle. Approve the network switch and try again.`
+          );
+          setStatus("error");
+          return null;
+        }
+      }
+
+      // 2) Sign and send.
+      setStatus("signing");
       try {
         if (calls.length === 1) {
-          // A single leg is a plain contract call.
-          const hash = await sendTransactionAsync({
+          const result = await sendTransactionAsync({
             to: calls[0].to,
             data: calls[0].data,
+            chainId: targetChain.id,
           } as never);
-          setTxRef(hash);
+          const ref = resolveRef(result);
+          setTxRef(ref);
           setStatus("sent");
-          return hash;
+          return ref;
         }
         // The whole circle, atomic, one signature.
-        const res = await sendCallsAsync({
+        const result = await sendCallsAsync({
           calls: calls.map((c) => ({ to: c.to, data: c.data })),
+          chainId: targetChain.id,
         } as never);
-        const ref = resolveRef(res);
+        const ref = resolveRef(result);
         setTxRef(ref);
         setStatus("sent");
         return ref;
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "The wallet did not complete the settlement.";
-        setError(message);
+        setError(explainError(err));
         setStatus("error");
         return null;
       }
     },
-    [sendCallsAsync, sendTransactionAsync]
+    [chainId, switchChainAsync, sendTransactionAsync, sendCallsAsync]
   );
 
   const reset = useCallback(() => {
@@ -75,14 +105,45 @@ export function useSettlement() {
   return { settle, status, txRef, error, reset };
 }
 
-/** `sendCalls` returns an id (string) or an object with an id/receipts. */
-function resolveRef(res: unknown): string {
-  if (typeof res === "string") return res;
-  if (res && typeof res === "object") {
-    const r = res as { id?: string; receipts?: { transactionHash?: string }[] };
+/**
+ * Read a transaction reference from whatever a send resolves to. Tempo's sync
+ * send returns a receipt object (not a bare hash); `sendCalls` returns an id or
+ * a calls-status object with a `receipts[]` array. Normalise all of them.
+ */
+function resolveRef(result: unknown): string {
+  if (typeof result === "string") return result;
+  if (result && typeof result === "object") {
+    const r = result as {
+      id?: string;
+      hash?: string;
+      transactionHash?: string;
+      receipts?: { transactionHash?: string }[];
+    };
+    if (r.transactionHash) return r.transactionHash;
+    if (r.hash) return r.hash;
     if (r.id) return r.id;
-    const hash = r.receipts?.find((x) => x?.transactionHash)?.transactionHash;
-    if (hash) return hash;
+    const fromReceipts = r.receipts?.find((x) => x?.transactionHash)?.transactionHash;
+    if (fromReceipts) return fromReceipts;
   }
   return "";
+}
+
+/** Turn a wallet/RPC error into something a person can act on. */
+function explainError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  const lower = raw.toLowerCase();
+  if (lower.includes("user rejected") || lower.includes("user denied")) {
+    return "You declined the signature, so nothing was settled.";
+  }
+  if (lower.includes("insufficient") || lower.includes("exceeds balance")) {
+    return "A party does not hold enough to cover their net position. Try liquidity-aware clearing, or top up and retry.";
+  }
+  if (lower.includes("chain") && lower.includes("match")) {
+    return `Your wallet is on the wrong network — switch to ${DEFAULT_NETWORK.name} and try again.`;
+  }
+  if (lower.includes("does not support") || lower.includes("wallet_sendcalls") || lower.includes("method not")) {
+    return "This wallet does not support atomic batches. Each leg can still be sent individually — or use a wallet with EIP-5792 support.";
+  }
+  // Keep it honest: show the first line of the real error, trimmed.
+  return raw.split("\n")[0].slice(0, 180) || "The wallet did not complete the settlement.";
 }

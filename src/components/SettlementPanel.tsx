@@ -9,13 +9,14 @@
  * sends it through the connected wallet as a single atomic transaction.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import type { Circle } from "@/lib/circle";
 import { partyName } from "@/lib/circle";
 import type { ClearingResult } from "@/lib/types";
 import { buildSettlementBatch } from "@/lib/batch";
 import { useSettlement } from "@/lib/useSettlement";
+import { confirmSettlement, type ChainConfirmation } from "@/lib/chain";
 import { formatAmount, formatWithSymbol, formatPercent, shortAddress } from "@/lib/money";
 import { DEFAULT_NETWORK, explorerTxUrl } from "@/lib/tempo";
 
@@ -30,6 +31,8 @@ export function SettlementPanel({
 }) {
   const { isConnected } = useAccount();
   const { settle, status, txRef, error, reset } = useSettlement();
+  const [confirmation, setConfirmation] = useState<ChainConfirmation | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const batch = useMemo(() => buildSettlementBatch(result.transfers), [result.transfers]);
   const token = circle.defaultToken;
@@ -45,7 +48,20 @@ export function SettlementPanel({
 
   async function onSettle() {
     const ref = await settle(batch);
-    if (ref !== null) onCleared(new Date().toISOString());
+    if (ref !== null) {
+      onCleared(new Date().toISOString());
+      // Flag it from the chain itself: read the settlement back from Tempo and
+      // confirm it mined, rather than trusting the wallet's response.
+      if (ref && /^0x[0-9a-fA-F]{64}$/.test(ref)) {
+        setConfirming(true);
+        try {
+          const result = await confirmSettlement(ref);
+          setConfirmation(result);
+        } finally {
+          setConfirming(false);
+        }
+      }
+    }
   }
 
   if (circle.obligations.filter((o) => !o.disputed).length === 0) {
@@ -84,8 +100,42 @@ export function SettlementPanel({
             View on the Tempo explorer →
           </a>
         ) : null}
+
+        {/* On-chain confirmation — flagged from the chain, not the wallet. */}
+        {batch.length > 0 && txRef ? (
+          <div
+            className="row"
+            style={{
+              gap: 8,
+              marginTop: 14,
+              padding: "10px 14px",
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--line)",
+              background: confirmation?.confirmed ? "var(--mint-glow)" : "transparent",
+            }}
+          >
+            {confirming ? (
+              <span className="faint mono" style={{ fontSize: "0.82rem" }}>
+                Reading it back from Tempo…
+              </span>
+            ) : confirmation?.confirmed ? (
+              <span className="mono" style={{ fontSize: "0.82rem", color: "var(--mint-400)" }}>
+                ✓ Confirmed on-chain in block {confirmation.blockNumber?.toString()}
+              </span>
+            ) : confirmation?.status === "reverted" ? (
+              <span className="mono" style={{ fontSize: "0.82rem", color: "var(--rose-400)" }}>
+                ✕ The settlement reverted on-chain — nothing moved.
+              </span>
+            ) : (
+              <span className="faint mono" style={{ fontSize: "0.82rem" }}>
+                Awaiting on-chain confirmation…
+              </span>
+            )}
+          </div>
+        ) : null}
+
         <div style={{ marginTop: 16 }}>
-          <button className="btn btn-quiet btn-sm" onClick={reset}>
+          <button className="btn btn-quiet btn-sm" onClick={() => { reset(); setConfirmation(null); }}>
             Clear again
           </button>
         </div>
@@ -180,9 +230,11 @@ export function SettlementPanel({
         className="btn btn-primary"
         style={{ width: "100%" }}
         onClick={onSettle}
-        disabled={!isConnected || status === "signing"}
+        disabled={!isConnected || status === "signing" || status === "switching"}
       >
-        {status === "signing"
+        {status === "switching"
+          ? `Switching to ${DEFAULT_NETWORK.name}…`
+          : status === "signing"
           ? "Settling on Tempo…"
           : batch.length === 0
           ? "Mark circle cleared"

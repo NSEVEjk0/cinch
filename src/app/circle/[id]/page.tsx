@@ -126,7 +126,7 @@ export default function CirclePage() {
           </div>
         </div>
 
-        <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 28 }}>
+        <div className="split" style={{ gap: 28, alignItems: "start" }}>
           {/* ------------------------- left: editor ------------------------- */}
           <div className="stack" style={{ gap: 20 }}>
             <AddObligation circle={circle} onAddParty={addParty} onAdd={addObligation} />
@@ -253,7 +253,7 @@ function AddObligation({
       <h2 className="display" style={{ fontSize: "1.2rem", marginBottom: 16 }}>
         Add an obligation
       </h2>
-      <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="g2" style={{ gap: 12 }}>
         <label className="stack">
           <span className="label">Payer owes…</span>
           <input
@@ -280,7 +280,7 @@ function AddObligation({
           <option key={p.address} value={p.name} />
         ))}
       </datalist>
-      <div className="grid" style={{ gridTemplateColumns: "1fr 1.4fr", gap: 12, marginTop: 12 }}>
+      <div className="g2" style={{ gap: 12, marginTop: 12 }}>
         <label className="stack">
           <span className="label">Amount ({token.symbol})</span>
           <input

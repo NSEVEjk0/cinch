@@ -12,12 +12,7 @@ export default function HomePage() {
       {/* ------------------------------- hero ------------------------------- */}
       <section className="shell" style={{ paddingTop: 72, paddingBottom: 40 }}>
         <div
-          className="grid"
-          style={{
-            gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-            gap: 56,
-            alignItems: "center",
-          }}
+          className="split"
         >
           <div className="rise">
             <div className="chip chip-mint" style={{ marginBottom: 22 }}>
@@ -72,7 +67,7 @@ export default function HomePage() {
 
       {/* --------------------------- how it works --------------------------- */}
       <section className="shell section" style={{ paddingTop: 0 }}>
-        <div className="grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+        <div className="g3">
           {HOW.map((h) => (
             <div key={h.step} className="card card-pad" style={{ padding: 28 }}>
               <div
@@ -104,7 +99,7 @@ export default function HomePage() {
             </h2>
           </div>
         </div>
-        <div className="grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 18 }}>
+        <div className="g3">
           {FEATURES.map((f) => (
             <div key={f.title} className="card card-pad" style={{ padding: 26 }}>
               <h3 className="display" style={{ fontSize: "1.18rem", marginBottom: 12 }}>
@@ -129,15 +124,11 @@ export default function HomePage() {
               Built out of Tempo's primitives — it could not work the same way elsewhere.
             </h2>
           </div>
-          <div className="grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
-            {WHY_TEMPO.map((w, i) => (
+          <div className="g2" style={{ gap: 1, background: "var(--line)" }}>
+            {WHY_TEMPO.map((w) => (
               <div
                 key={w.primitive}
-                style={{
-                  padding: "22px 32px",
-                  borderBottom: i < WHY_TEMPO.length - (WHY_TEMPO.length % 2 === 0 ? 2 : 1) ? "1px solid var(--line)" : "none",
-                  borderRight: i % 2 === 0 ? "1px solid var(--line)" : "none",
-                }}
+                style={{ padding: "22px 32px", background: "var(--ink-850)" }}
               >
                 <div className="mono" style={{ color: "var(--mint-400)", fontSize: "0.9rem", marginBottom: 7 }}>
                   {w.primitive}
@@ -167,8 +158,8 @@ export default function HomePage() {
               }}
             >
               <div
-                className="grid"
-                style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.6fr)", gap: 32 }}
+                className="faq-row"
+                style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.6fr)", gap: 32 }}
               >
                 <h3 className="display" style={{ fontSize: "1.12rem", margin: 0 }}>
                   {item.q}

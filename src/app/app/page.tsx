@@ -61,7 +61,7 @@ export default function AppPage() {
           obligations, and clear the whole thing in a single settlement.
         </p>
 
-        <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)", gap: 24 }}>
+        <div className="split-wide">
           {/* create */}
           <div className="card card-pad">
             <h2 className="display" style={{ fontSize: "1.3rem", marginBottom: 18 }}>

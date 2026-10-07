@@ -76,7 +76,7 @@ export default function HowPage() {
           <h2 className="display" style={{ fontSize: "clamp(1.6rem, 3.2vw, 2.2rem)", marginBottom: 24 }}>
             The Tempo primitives it leans on
           </h2>
-          <div className="grid" style={{ gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+          <div className="g2" style={{ gap: 16 }}>
             {WHY_TEMPO.map((w) => (
               <div key={w.primitive} className="card card-pad" style={{ padding: 24 }}>
                 <div className="mono" style={{ color: "var(--mint-400)", fontSize: "0.92rem", marginBottom: 8 }}>

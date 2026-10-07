@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CircleDiagram } from "@/components/CircleDiagram";
 import { SettlementPanel } from "@/components/SettlementPanel";
@@ -14,10 +15,19 @@ import {
   newId,
   type Circle,
   type Party,
+  type SettlementRecord,
+  recordSettlement,
+  rollForward,
+  decodeCircle,
+  mergeCircle,
+  encodeCircle,
+  cadenceDue,
 } from "@/lib/circle";
 import { clearRoom } from "@/lib/netting";
+import { openCertificate } from "@/lib/certificate";
+import { useNetwork } from "@/lib/useNetwork";
 import { parseAmount, formatAmount, formatWithSymbol, formatPercent, isAddress, shortAddress } from "@/lib/money";
-import type { Obligation } from "@/lib/types";
+import type { Obligation, NettingMode } from "@/lib/types";
 
 export default function CirclePage() {
   const params = useParams();
@@ -30,12 +40,29 @@ export default function CirclePage() {
 
   useEffect(() => {
     const c = loadCircle(id);
+    // A shared circle arrives as a #c=… fragment; merge it into (or create) the
+    // local copy so several people can contribute to the same room by link.
+    const frag = typeof window !== "undefined" ? window.location.hash : "";
+    const m = frag.match(/[#&]c=([^&]+)/);
+    if (m) {
+      const incoming = decodeCircle(decodeURIComponent(m[1]));
+      if (incoming) {
+        const merged = c ? mergeCircle(c, incoming) : incoming;
+        saveCircle(merged);
+        setCircle(merged);
+        // Clean the fragment so a refresh doesn't re-merge.
+        if (typeof window !== "undefined") {
+          window.history.replaceState(null, "", window.location.pathname);
+        }
+        return;
+      }
+    }
     if (!c) setNotFound(true);
     else setCircle(c);
   }, [id]);
 
   const result = useMemo(
-    () => (circle ? clearRoom(circle.obligations) : null),
+    () => (circle ? clearRoom(circle.obligations, { mode: circle.nettingMode ?? "min-transfers" }) : null),
     [circle]
   );
 
@@ -65,14 +92,28 @@ export default function CirclePage() {
     persist({ ...circle, obligations: circle.obligations.filter((o) => o.id !== oid) });
   }
 
-  function toggleDispute(oid: string) {
+  function toggleDispute(oid: string, reason?: string) {
     if (!circle) return;
     persist({
       ...circle,
       obligations: circle.obligations.map((o) =>
-        o.id === oid ? { ...o, disputed: !o.disputed } : o
+        o.id === oid
+          ? { ...o, disputed: !o.disputed, disputeReason: !o.disputed ? reason : undefined }
+          : o
       ),
     });
+  }
+
+  function changeMode(mode: NettingMode) {
+    if (!circle) return;
+    persist({ ...circle, nettingMode: mode });
+  }
+
+  function onSettled(record: SettlementRecord) {
+    if (!circle) return;
+    // Record to history, then roll a standing circle's board forward.
+    const withHistory = recordSettlement(circle, record);
+    persist(rollForward(withHistory));
   }
 
   if (notFound) {
@@ -120,13 +161,18 @@ export default function CirclePage() {
                 {circle.name}
               </h1>
               <span className="chip">{circle.cadence === "once" ? "one-off" : circle.cadence}</span>
+              {circle.cadence !== "once" ? (
+                <span className="chip chip-mint">{cadenceDue(circle)}</span>
+              ) : null}
             </div>
           </div>
           <div className="row wrap" style={{ gap: 10 }}>
-            <ShareButton />
+            <ShareButton circle={circle} />
             <TokenSwitch value={circle.defaultToken} onChange={changeToken} />
           </div>
         </div>
+
+        <SavingsBar circle={circle} />
 
         <div className="split" style={{ gap: 28, alignItems: "start" }}>
           {/* ------------------------- left: editor ------------------------- */}
@@ -137,6 +183,7 @@ export default function CirclePage() {
               onRemove={removeObligation}
               onToggleDispute={toggleDispute}
             />
+            <AttestPanel circle={circle} onAttest={addParty} />
           </div>
 
           {/* ------------------------- right: clearing ---------------------- */}
@@ -178,8 +225,12 @@ export default function CirclePage() {
               )}
             </div>
 
+            <ModeToggle mode={circle.nettingMode ?? "min-transfers"} onChange={changeMode} />
+
             {/* settlement */}
-            <SettlementPanel circle={circle} result={result} onCleared={(at) => persist({ ...circle, lastClearedAt: at })} />
+            <SettlementPanel circle={circle} result={result} onSettled={onSettled} />
+
+            <SettlementHistory circle={circle} />
           </div>
         </div>
       </main>
@@ -322,7 +373,7 @@ function ObligationList({
 }: {
   circle: Circle;
   onRemove: (id: string) => void;
-  onToggleDispute: (id: string) => void;
+  onToggleDispute: (id: string, reason?: string) => void;
 }) {
   if (circle.obligations.length === 0) {
     return (
@@ -360,6 +411,9 @@ function ObligationList({
               </div>
               <div className="faint" style={{ fontSize: "0.8rem", marginTop: 3 }}>
                 {o.reference}
+                {o.disputed && o.disputeReason ? (
+                  <span style={{ color: "var(--amber-400)" }}> · {o.disputeReason}</span>
+                ) : null}
               </div>
             </div>
             <div className="row" style={{ gap: 14 }}>
@@ -369,7 +423,14 @@ function ObligationList({
               <button
                 className="btn btn-quiet btn-sm"
                 style={{ padding: "4px 8px", color: o.disputed ? "var(--mint-400)" : "var(--amber-400)" }}
-                onClick={() => onToggleDispute(o.id)}
+                onClick={() => {
+                  if (o.disputed) {
+                    onToggleDispute(o.id);
+                  } else {
+                    const reason = window.prompt("Why is this disputed? (optional)") ?? "";
+                    onToggleDispute(o.id, reason.trim() || undefined);
+                  }
+                }}
                 title={o.disputed ? "Include in the round" : "Hold out of the round"}
               >
                 {o.disputed ? "restore" : "dispute"}
@@ -394,22 +455,172 @@ function partyNameShort(circle: Circle, address: string): string {
   return name.startsWith("0x") ? shortAddress(name) : name;
 }
 
-function ShareButton() {
+function ShareButton({ circle }: { circle: Circle }) {
   const [copied, setCopied] = useState(false);
   async function share() {
     if (typeof window === "undefined") return;
+    // Pack the circle's state into the link so whoever opens it joins the same
+    // room and can add their own obligations — no server involved.
+    const encoded = encodeCircle(circle);
+    const url = `${window.location.origin}${window.location.pathname}#c=${encodeURIComponent(encoded)}`;
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setTimeout(() => setCopied(false), 1800);
     } catch {
       /* clipboard unavailable */
     }
   }
   return (
-    <button className="btn btn-ghost btn-sm" onClick={share} title="Copy a link to this circle">
+    <button className="btn btn-ghost btn-sm" onClick={share} title="Copy a shareable link that carries this circle">
       {copied ? "Link copied ✓" : "Share circle"}
     </button>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Savings bar — the running "value saved" headline                           */
+/* -------------------------------------------------------------------------- */
+
+function SavingsBar({ circle }: { circle: Circle }) {
+  const settlements = circle.settlements ?? [];
+  if (settlements.length === 0) return null;
+
+  // Sum gross vs netted across every past clearing, scaled by decimals (6).
+  let gross = 0;
+  let netted = 0;
+  let transfers = 0;
+  for (const s of settlements) {
+    for (const v of Object.values(s.grossByToken)) gross += Number(BigInt(v)) / 1e6;
+    for (const v of Object.values(s.nettedByToken)) netted += Number(BigInt(v)) / 1e6;
+    transfers += s.transfers.length;
+  }
+  const saved = gross - netted;
+  const pct = gross > 0 ? Math.round((saved / gross) * 100) : 0;
+  const money = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+  return (
+    <div
+      className="card card-pad glow-ring"
+      style={{ padding: 20, marginBottom: 24, background: "radial-gradient(500px 200px at 20% 0%, var(--mint-glow), transparent 70%)" }}
+    >
+      <span className="label">Value saved by netting</span>
+      <p className="muted" style={{ margin: "8px 0 0", fontSize: "1.02rem", lineHeight: 1.5 }}>
+        Across {settlements.length} clearing{settlements.length === 1 ? "" : "s"}, Cinch moved{" "}
+        <strong className="mono" style={{ color: "var(--text)" }}>{money(netted)}</strong> instead of{" "}
+        <strong className="mono" style={{ color: "var(--text)" }}>{money(gross)}</strong> —{" "}
+        <strong style={{ color: "var(--mint-400)" }}>{pct}% less</strong>, in{" "}
+        {transfers} transfer{transfers === 1 ? "" : "s"}.
+      </p>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Netting-mode toggle                                                        */
+/* -------------------------------------------------------------------------- */
+
+function ModeToggle({ mode, onChange }: { mode: NettingMode; onChange: (m: NettingMode) => void }) {
+  return (
+    <div className="card card-pad" style={{ padding: 18 }}>
+      <div className="between wrap" style={{ gap: 10 }}>
+        <div>
+          <span className="label">Clearing mode</span>
+          <p className="faint" style={{ margin: "6px 0 0", fontSize: "0.82rem", maxWidth: "40ch" }}>
+            {mode === "min-transfers"
+              ? "Fewest transfers — a debt may be settled through a third party."
+              : "Preserve relationships — a debt is only ever settled by its own two parties."}
+          </p>
+        </div>
+        <div className="segment">
+          <button data-active={mode === "min-transfers"} onClick={() => onChange("min-transfers")}>
+            Fewest
+          </button>
+          <button
+            data-active={mode === "preserve-relationships"}
+            onClick={() => onChange("preserve-relationships")}
+          >
+            Bilateral
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Attest panel — connect wallet to confirm you're a party                    */
+/* -------------------------------------------------------------------------- */
+
+function AttestPanel({ circle, onAttest }: { circle: Circle; onAttest: (p: Party) => void }) {
+  const { address, isConnected } = useAccount();
+  if (!isConnected || !address) return null;
+
+  const me = circle.parties.find((p) => p.address.toLowerCase() === address.toLowerCase());
+  if (!me) return null; // the connected wallet isn't a listed party
+
+  if (me.attestedAt) {
+    return (
+      <div className="card card-pad" style={{ padding: 16 }}>
+        <span className="mono" style={{ fontSize: "0.84rem", color: "var(--mint-400)" }}>
+          ✓ You ({me.name}) have confirmed the obligations involving you.
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="card card-pad" style={{ padding: 16 }}>
+      <p className="muted" style={{ margin: "0 0 12px", fontSize: "0.9rem" }}>
+        You&apos;re listed as <strong>{me.name}</strong> in this circle. Confirm the obligations
+        involving you so everyone knows the room is agreed before it clears.
+      </p>
+      <button
+        className="btn btn-ghost btn-sm"
+        onClick={() => onAttest({ ...me, attestedAt: new Date().toISOString() })}
+      >
+        Confirm my obligations
+      </button>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Settlement history + certificates                                          */
+/* -------------------------------------------------------------------------- */
+
+function SettlementHistory({ circle }: { circle: Circle }) {
+  const network = useNetwork();
+  const settlements = [...(circle.settlements ?? [])].reverse();
+  if (settlements.length === 0) return null;
+
+  return (
+    <div className="card" style={{ overflow: "hidden" }}>
+      <div className="card-pad" style={{ padding: "16px 22px", borderBottom: "1px solid var(--line)" }}>
+        <span className="label">Settlement history · {settlements.length}</span>
+      </div>
+      <div>
+        {settlements.map((s) => (
+          <div key={s.id} className="between" style={{ padding: "14px 22px", borderBottom: "1px solid var(--line)" }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "0.92rem" }}>
+                {new Date(s.at).toLocaleDateString()} ·{" "}
+                <span className="faint">{s.transfers.length} transfer{s.transfers.length === 1 ? "" : "s"}</span>
+              </div>
+              <div className="faint mono" style={{ fontSize: "0.76rem", marginTop: 3 }}>
+                {Math.round(s.compressionRatio * 100)}% compressed · {s.atomic ? "atomic" : "leg-by-leg"}
+              </div>
+            </div>
+            <button
+              className="btn btn-quiet btn-sm"
+              style={{ color: "var(--mint-400)" }}
+              onClick={() => openCertificate(circle, s, network)}
+            >
+              Certificate →
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

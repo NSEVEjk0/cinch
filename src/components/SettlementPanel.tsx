@@ -11,8 +11,8 @@
 
 import { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
-import type { Circle } from "@/lib/circle";
-import { partyName } from "@/lib/circle";
+import type { Circle, SettlementRecord } from "@/lib/circle";
+import { partyName, toSettlementRecord } from "@/lib/circle";
 import type { ClearingResult } from "@/lib/types";
 import { buildSettlementBatch } from "@/lib/batch";
 import { useSettlement } from "@/lib/useSettlement";
@@ -24,11 +24,11 @@ import { useNetwork } from "@/lib/useNetwork";
 export function SettlementPanel({
   circle,
   result,
-  onCleared,
+  onSettled,
 }: {
   circle: Circle;
   result: ClearingResult;
-  onCleared: (at: string) => void;
+  onSettled: (record: SettlementRecord) => void;
 }) {
   const { isConnected } = useAccount();
   const network = useNetwork();
@@ -37,6 +37,7 @@ export function SettlementPanel({
     settleSequentially,
     status,
     txRef,
+    txRefs,
     error,
     batchUnsupported,
     legProgress,
@@ -57,28 +58,39 @@ export function SettlementPanel({
   const debtors = result.positions.filter((p) => p.net < 0n).sort((a, b) => (a.net < b.net ? -1 : 1));
   const creditors = result.positions.filter((p) => p.net > 0n).sort((a, b) => (a.net > b.net ? -1 : 1));
 
-  async function runConfirm(ref: string | null) {
-    if (ref !== null) {
-      onCleared(new Date().toISOString());
-      if (ref && /^0x[0-9a-fA-F]{64}$/.test(ref)) {
-        setConfirming(true);
-        try {
-          setConfirmation(await confirmSettlement(ref, { network }));
-        } finally {
-          setConfirming(false);
-        }
+  async function record(ref: string | null, refs: string[], atomic: boolean) {
+    if (ref === null) return;
+    // Write the settlement into the circle's history (powers the ledger,
+    // certificates and the savings graph).
+    onSettled(
+      toSettlementRecord({
+        transfers: result.transfers,
+        txRefs: refs.filter(Boolean),
+        grossByToken: result.stats.grossByToken,
+        nettedByToken: result.stats.nettedByToken,
+        compressionRatio: result.stats.compressionRatio,
+        obligationCount: result.stats.obligationCount,
+        atomic,
+      })
+    );
+    if (ref && /^0x[0-9a-fA-F]{64}$/.test(ref)) {
+      setConfirming(true);
+      try {
+        setConfirmation(await confirmSettlement(ref, { network }));
+      } finally {
+        setConfirming(false);
       }
     }
   }
 
   async function onSettle() {
     const ref = await settle(batch);
-    await runConfirm(ref);
+    await record(ref, ref ? [ref, ...txRefs] : txRefs, true);
   }
 
   async function onSettleSequentially() {
     const ref = await settleSequentially(batch);
-    await runConfirm(ref);
+    await record(ref, ref ? [ref, ...txRefs] : txRefs, false);
   }
 
   if (circle.obligations.filter((o) => !o.disputed).length === 0) {

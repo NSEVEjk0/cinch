@@ -20,6 +20,7 @@ import type {
   ClearingResult,
   ClearingStats,
   NetPosition,
+  NettingMode,
   Obligation,
   SettlementTransfer,
   Token,
@@ -171,11 +172,19 @@ function cmpAddr(a: string, b: string): number {
  * is supplied, liquidity-aware clearing (see `liquidity.ts`) trims the round to
  * the largest subset every debtor can actually fund; otherwise all non-disputed
  * obligations are included.
+ *
+ * `mode` chooses how transfers are formed:
+ *  - "min-transfers" (default): global min-cash-flow — the fewest payments,
+ *    even if that means A's debt to B is satisfied by C. Smallest settlement.
+ *  - "preserve-relationships": net only within each debtor↔creditor pair, so a
+ *    debt is only ever discharged by the two parties to it. More transfers, but
+ *    no third party is ever routed through.
  */
 export function clearRoom(
   obligations: Obligation[],
-  options: { balances?: Balance[] } = {}
+  options: { balances?: Balance[]; mode?: NettingMode } = {}
 ): ClearingResult {
+  const mode = options.mode ?? "min-transfers";
   const disputed = obligations.filter((o) => o.disputed);
   let included = obligations.filter((o) => !o.disputed);
   const excluded: Obligation[] = [...disputed];
@@ -198,7 +207,10 @@ export function clearRoom(
   const transfers: SettlementTransfer[] = [];
   const positions: NetPosition[] = [];
   for (const { token, obligations: group } of byToken.values()) {
-    const r = settleToken(group, token);
+    const r =
+      mode === "preserve-relationships"
+        ? settleTokenBilateral(group, token)
+        : settleToken(group, token);
     transfers.push(...r.transfers);
     positions.push(...r.positions);
   }
@@ -209,6 +221,52 @@ export function clearRoom(
     excluded,
     stats: computeStats(included, transfers),
   };
+}
+
+/**
+ * Preserve-relationships settlement: net each unordered pair of parties against
+ * each other only. If A owes B 100 and B owes A 60, that becomes a single A→B
+ * 40 — but a debt A owes B is never satisfied by anyone except A paying B.
+ */
+function settleTokenBilateral(
+  obligations: Obligation[],
+  token: Token
+): { transfers: SettlementTransfer[]; positions: NetPosition[] } {
+  const positions = [...netPositionsForToken(obligations, token).values()];
+
+  // Sum directed amounts per ordered pair, and collect references per pair.
+  const directed = new Map<string, bigint>();
+  const refs = new Map<string, string[]>();
+  const key = (from: string, to: string) => `${from.toLowerCase()}>${to.toLowerCase()}`;
+  for (const o of obligations) {
+    const k = key(o.debtor, o.creditor);
+    directed.set(k, (directed.get(k) ?? 0n) + o.amount);
+    refs.set(k, [...(refs.get(k) ?? []), o.reference]);
+  }
+
+  const transfers: SettlementTransfer[] = [];
+  const seen = new Set<string>();
+  for (const o of obligations) {
+    const a = o.debtor;
+    const b = o.creditor;
+    const fwdK = key(a, b);
+    const revK = key(b, a);
+    const pairId = [a.toLowerCase(), b.toLowerCase()].sort().join("|");
+    if (seen.has(pairId)) continue;
+    seen.add(pairId);
+
+    const fwd = directed.get(fwdK) ?? 0n;
+    const rev = directed.get(revK) ?? 0n;
+    const net = fwd - rev;
+    if (net === 0n) continue;
+    const from = net > 0n ? a : b;
+    const to = net > 0n ? b : a;
+    const amount = net > 0n ? net : -net;
+    const combinedRefs = [...(refs.get(fwdK) ?? []), ...(refs.get(revK) ?? [])];
+    transfers.push({ from, to, amount, token, references: combinedRefs });
+  }
+
+  return { transfers, positions };
 }
 
 /** Headline stats: gross vs netted per token, and the overall compression. */

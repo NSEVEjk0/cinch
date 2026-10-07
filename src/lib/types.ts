@@ -5,6 +5,9 @@
  * USDC: 1_000_000n === $1.00). Floats never touch money in this codebase.
  */
 
+/** How the engine chooses the transfer set. */
+export type NettingMode = "min-transfers" | "preserve-relationships";
+
 /** A stablecoin an obligation can be denominated in. */
 export interface Token {
   /** On-chain address of the ERC-20. */
@@ -29,6 +32,8 @@ export interface Obligation {
   reference: string;
   /** When excluded, the obligation is held out of the clearing round. */
   disputed?: boolean;
+  /** Why it was disputed — shown in the audit trail. */
+  disputeReason?: string;
   createdAt?: string;
 }
 

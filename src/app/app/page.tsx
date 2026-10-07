@@ -16,6 +16,7 @@ import { SCENARIOS, scenarioToCircle } from "@/lib/scenarios";
 import { clearRoom } from "@/lib/netting";
 import { formatPercent } from "@/lib/money";
 import { useNetwork } from "@/lib/useNetwork";
+import { parseObligationsCsv } from "@/lib/csv";
 
 export default function AppPage() {
   const router = useRouter();
@@ -24,6 +25,9 @@ export default function AppPage() {
   const [name, setName] = useState("");
   const [cadence, setCadence] = useState<Circle["cadence"]>("once");
   const [ready, setReady] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [csvText, setCsvText] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
 
   useEffect(() => {
     setCircles(loadCircles());
@@ -39,6 +43,22 @@ export default function AppPage() {
   function loadExample(scenarioId: string) {
     const scenario = SCENARIOS.find((s) => s.id === scenarioId)!;
     const circle = scenarioToCircle(scenario, newId());
+    saveCircle(circle);
+    router.push(`/circle/${circle.id}`);
+  }
+
+  function importCsv(text: string) {
+    const token = network.tokens[0];
+    const parsed = parseObligationsCsv(text, token);
+    if (parsed.obligations.length === 0) {
+      setImportError(
+        parsed.errors[0] ?? "No obligations found. Use: payer, payee, amount, reason — one per line."
+      );
+      return;
+    }
+    const circle = createCircle({ name: name.trim() || "Imported circle", cadence, defaultToken: token });
+    circle.parties = parsed.parties.map((p) => ({ address: p.address, name: p.name }));
+    circle.obligations = parsed.obligations;
     saveCircle(circle);
     router.push(`/circle/${circle.id}`);
   }
@@ -137,6 +157,41 @@ export default function AppPage() {
                 </button>
               ))}
             </div>
+            <div className="hairline" style={{ margin: "18px 0 14px" }} />
+            {!showImport ? (
+              <button
+                className="btn btn-quiet btn-sm"
+                style={{ color: "var(--mint-400)", padding: 0 }}
+                onClick={() => setShowImport(true)}
+              >
+                or import a list of debts (CSV / paste) →
+              </button>
+            ) : (
+              <div className="stack" style={{ gap: 10 }}>
+                <span className="label">Paste debts — one per line: payer, payee, amount, reason</span>
+                <textarea
+                  className="field mono"
+                  style={{ minHeight: 110, resize: "vertical" }}
+                  placeholder={"Alice, Bob, 100, dinner\nBob, Carol, 60, taxi\nCarol, Alice, 40, tickets"}
+                  value={csvText}
+                  onChange={(e) => {
+                    setCsvText(e.target.value);
+                    setImportError(null);
+                  }}
+                />
+                {importError ? (
+                  <p style={{ color: "var(--rose-400)", fontSize: "0.84rem", margin: 0 }}>{importError}</p>
+                ) : null}
+                <div className="row" style={{ gap: 10 }}>
+                  <button className="btn btn-primary btn-sm" onClick={() => importCsv(csvText)} disabled={!csvText.trim()}>
+                    Import into a circle
+                  </button>
+                  <button className="btn btn-quiet btn-sm" onClick={() => setShowImport(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

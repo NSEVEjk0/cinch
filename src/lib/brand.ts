@@ -64,6 +64,14 @@ export const FEATURES = [
     title: "Disputes don't block",
     body: "Flag an obligation and Cinch holds it out of the round. One disagreement freezes a single edge, never the whole circle — the rest still clears today.",
   },
+  {
+    title: "Settlement certificates",
+    body: "Every clearing is kept in the circle's history with the terms and the on-chain proof, and exports as a printable certificate — so a settlement is also a record you can file.",
+  },
+  {
+    title: "Agents can clear too",
+    body: "The same netting engine answers machines at POST /api/clear: an agent submits obligations and gets back the minimal settlement, so automated systems can net and settle without a browser.",
+  },
 ] as const;
 
 /** Why this is a Tempo project specifically. */

@@ -233,3 +233,49 @@ describe("netting engine — edge cases", () => {
     expect(result.stats.compressionRatio).toBe(0);
   });
 });
+
+describe("netting engine — preserve-relationships mode", () => {
+  it("nets only within a pair, never routing through a third party", () => {
+    // A→B 100, B→C 100, C→A 100 (perfect circle).
+    // min-transfers nets this to ZERO. preserve-relationships keeps each
+    // bilateral debt as its own transfer, since no pair cancels internally.
+    const obligations = [
+      ob("inv1", A, B, usd(100)),
+      ob("inv2", B, C, usd(100)),
+      ob("inv3", C, A, usd(100)),
+    ];
+    const min = clearRoom(obligations, { mode: "min-transfers" });
+    const pre = clearRoom(obligations, { mode: "preserve-relationships" });
+    expect(min.transfers).toHaveLength(0);
+    expect(pre.transfers).toHaveLength(3); // A→B, B→C, C→A all remain
+  });
+
+  it("still nets a bilateral pair against itself", () => {
+    // A→B 100 and B→A 60 → single A→B 40, in both modes.
+    const obligations = [ob("inv1", A, B, usd(100)), ob("inv2", B, A, usd(60))];
+    const pre = clearRoom(obligations, { mode: "preserve-relationships" });
+    expect(pre.transfers).toHaveLength(1);
+    expect(pre.transfers[0].from).toBe(A);
+    expect(pre.transfers[0].to).toBe(B);
+    expect(pre.transfers[0].amount).toBe(usd(40));
+  });
+
+  it("conserves value in preserve-relationships mode", () => {
+    const obligations = [
+      ob("inv1", A, B, usd(100)),
+      ob("inv2", B, C, usd(70)),
+      ob("inv3", C, A, usd(40)),
+      ob("inv4", B, A, usd(25)),
+    ];
+    const pre = clearRoom(obligations, { mode: "preserve-relationships" });
+    const posByParty = new Map(pre.positions.map((p) => [p.party, p.net]));
+    const flow = new Map<string, bigint>();
+    for (const t of pre.transfers) {
+      flow.set(t.from, (flow.get(t.from) ?? 0n) - t.amount);
+      flow.set(t.to, (flow.get(t.to) ?? 0n) + t.amount);
+    }
+    for (const [party, net] of posByParty) {
+      expect(flow.get(party) ?? 0n).toBe(net);
+    }
+  });
+});

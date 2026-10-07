@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { BackButton } from "@/components/BackButton";
 import {
   loadCircles,
   createCircle,
@@ -71,7 +72,10 @@ export default function AppPage() {
   return (
     <>
       <SiteHeader />
-      <main className="shell" style={{ paddingTop: 48, paddingBottom: 40, minHeight: "70vh" }}>
+      <main className="shell" style={{ paddingTop: 32, paddingBottom: 40, minHeight: "70vh" }}>
+        <div style={{ marginBottom: 20 }}>
+          <BackButton fallback="/" label="Home" />
+        </div>
         <p className="eyebrow" style={{ marginBottom: 14 }}>
           Circles
         </p>

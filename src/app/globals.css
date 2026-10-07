@@ -431,6 +431,23 @@ body {
   font-weight: 600;
 }
 
+/* -------------------------------- back btn ------------------------------- */
+.back-btn {
+  gap: 7px;
+  padding-left: 14px;
+  padding-right: 16px;
+  color: var(--text-soft);
+}
+.back-btn:hover:not(:disabled) {
+  color: var(--text);
+}
+.back-btn span {
+  transition: transform 0.18s ease;
+}
+.back-btn:hover span {
+  transform: translateX(-2px);
+}
+
 .fade-in {
   animation: fade-in 0.5s ease both;
 }

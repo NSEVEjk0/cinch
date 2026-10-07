@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { BackButton } from "@/components/BackButton";
 import { HOW, WHY_TEMPO, BRAND } from "@/lib/brand";
 
 export const metadata = { title: "How it works" };
@@ -9,7 +10,10 @@ export default function HowPage() {
   return (
     <>
       <SiteHeader />
-      <main className="shell" style={{ paddingTop: 56, paddingBottom: 40 }}>
+      <main className="shell" style={{ paddingTop: 32, paddingBottom: 40 }}>
+        <div style={{ marginBottom: 20 }}>
+          <BackButton fallback="/" label="Home" />
+        </div>
         <p className="eyebrow" style={{ marginBottom: 16 }}>
           How it works
         </p>

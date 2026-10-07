@@ -32,7 +32,16 @@ export function SettlementPanel({
 }) {
   const { isConnected } = useAccount();
   const network = useNetwork();
-  const { settle, status, txRef, error, reset } = useSettlement();
+  const {
+    settle,
+    settleSequentially,
+    status,
+    txRef,
+    error,
+    batchUnsupported,
+    legProgress,
+    reset,
+  } = useSettlement();
   const [confirmation, setConfirmation] = useState<ChainConfirmation | null>(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -48,22 +57,28 @@ export function SettlementPanel({
   const debtors = result.positions.filter((p) => p.net < 0n).sort((a, b) => (a.net < b.net ? -1 : 1));
   const creditors = result.positions.filter((p) => p.net > 0n).sort((a, b) => (a.net > b.net ? -1 : 1));
 
-  async function onSettle() {
-    const ref = await settle(batch);
+  async function runConfirm(ref: string | null) {
     if (ref !== null) {
       onCleared(new Date().toISOString());
-      // Flag it from the chain itself: read the settlement back from Tempo and
-      // confirm it mined, rather than trusting the wallet's response.
       if (ref && /^0x[0-9a-fA-F]{64}$/.test(ref)) {
         setConfirming(true);
         try {
-          const result = await confirmSettlement(ref, { network });
-          setConfirmation(result);
+          setConfirmation(await confirmSettlement(ref, { network }));
         } finally {
           setConfirming(false);
         }
       }
     }
+  }
+
+  async function onSettle() {
+    const ref = await settle(batch);
+    await runConfirm(ref);
+  }
+
+  async function onSettleSequentially() {
+    const ref = await settleSequentially(batch);
+    await runConfirm(ref);
   }
 
   if (circle.obligations.filter((o) => !o.disputed).length === 0) {
@@ -228,29 +243,79 @@ export function SettlementPanel({
 
       {/* settle */}
       <div className="hairline" style={{ margin: "4px 0 18px" }} />
-      <button
-        className="btn btn-primary"
-        style={{ width: "100%" }}
-        onClick={onSettle}
-        disabled={!isConnected || status === "signing" || status === "switching"}
-      >
-        {status === "switching"
-          ? `Switching to ${network.name}…`
-          : status === "signing"
-          ? "Settling on Tempo…"
-          : batch.length === 0
-          ? "Mark circle cleared"
-          : `Settle the circle · ${batch.length} transfer${batch.length === 1 ? "" : "s"}, one signature`}
-      </button>
-      {!isConnected ? (
-        <p className="faint" style={{ fontSize: "0.82rem", marginTop: 10, textAlign: "center" }}>
-          Connect a wallet to settle. Previewing needs nothing.
-        </p>
-      ) : null}
-      {error ? <p style={{ color: "var(--rose-400)", marginTop: 12, fontSize: "0.88rem" }}>{error}</p> : null}
-      <p className="faint" style={{ fontSize: "0.78rem", marginTop: 12, textAlign: "center" }}>
-        One atomic transaction — every leg settles, or none does.
-      </p>
+
+      {batchUnsupported ? (
+        /* The wallet can't do an atomic batch. Offer the honest fallback. */
+        <div className="stack" style={{ gap: 12 }}>
+          <div
+            className="card-pad"
+            style={{
+              padding: 14,
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--line)",
+              background: "rgba(240,184,111,0.08)",
+            }}
+          >
+            <div className="row" style={{ gap: 8, marginBottom: 6 }}>
+              <span style={{ color: "var(--amber-400)" }}>⚠</span>
+              <span style={{ fontWeight: 540, fontSize: "0.92rem" }}>
+                This wallet can&apos;t sign an atomic batch
+              </span>
+            </div>
+            <p className="muted" style={{ margin: 0, fontSize: "0.86rem", lineHeight: 1.6 }}>
+              Your wallet doesn&apos;t support EIP-5792, so the {batch.length} legs can&apos;t go in
+              one all-or-nothing transaction. You can still settle them{" "}
+              <strong>one at a time</strong> — but note this is <strong>not atomic</strong>: each leg
+              is final as you sign it, so if you stop partway, the earlier legs have already paid.
+              For a true one-shot settlement, use a wallet with EIP-5792 support.
+            </p>
+          </div>
+          <button
+            className="btn btn-primary"
+            style={{ width: "100%" }}
+            onClick={onSettleSequentially}
+            disabled={status === "signing" || status === "switching"}
+          >
+            {status === "signing" && legProgress
+              ? `Signing leg ${legProgress.done + 1} of ${legProgress.total}…`
+              : `Settle leg by leg · ${batch.length} signatures`}
+          </button>
+          {error ? <p style={{ color: "var(--rose-400)", fontSize: "0.86rem", margin: 0 }}>{error}</p> : null}
+          <button
+            className="btn btn-quiet btn-sm"
+            style={{ alignSelf: "center" }}
+            onClick={reset}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <>
+          <button
+            className="btn btn-primary"
+            style={{ width: "100%" }}
+            onClick={onSettle}
+            disabled={!isConnected || status === "signing" || status === "switching"}
+          >
+            {status === "switching"
+              ? `Switching to ${network.name}…`
+              : status === "signing"
+              ? "Settling on Tempo…"
+              : batch.length === 0
+              ? "Mark circle cleared"
+              : `Settle the circle · ${batch.length} transfer${batch.length === 1 ? "" : "s"}, one signature`}
+          </button>
+          {!isConnected ? (
+            <p className="faint" style={{ fontSize: "0.82rem", marginTop: 10, textAlign: "center" }}>
+              Connect a wallet to settle. Previewing needs nothing.
+            </p>
+          ) : null}
+          {error ? <p style={{ color: "var(--rose-400)", marginTop: 12, fontSize: "0.88rem" }}>{error}</p> : null}
+          <p className="faint" style={{ fontSize: "0.78rem", marginTop: 12, textAlign: "center" }}>
+            One atomic transaction — every leg settles, or none does.
+          </p>
+        </>
+      )}
     </div>
   );
 }

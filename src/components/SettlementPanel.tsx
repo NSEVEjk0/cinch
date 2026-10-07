@@ -18,7 +18,8 @@ import { buildSettlementBatch } from "@/lib/batch";
 import { useSettlement } from "@/lib/useSettlement";
 import { confirmSettlement, type ChainConfirmation } from "@/lib/chain";
 import { formatAmount, formatWithSymbol, formatPercent, shortAddress } from "@/lib/money";
-import { DEFAULT_NETWORK, explorerTxUrl } from "@/lib/tempo";
+import { explorerTxUrl } from "@/lib/tempo";
+import { useNetwork } from "@/lib/useNetwork";
 
 export function SettlementPanel({
   circle,
@@ -30,6 +31,7 @@ export function SettlementPanel({
   onCleared: (at: string) => void;
 }) {
   const { isConnected } = useAccount();
+  const network = useNetwork();
   const { settle, status, txRef, error, reset } = useSettlement();
   const [confirmation, setConfirmation] = useState<ChainConfirmation | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -55,7 +57,7 @@ export function SettlementPanel({
       if (ref && /^0x[0-9a-fA-F]{64}$/.test(ref)) {
         setConfirming(true);
         try {
-          const result = await confirmSettlement(ref);
+          const result = await confirmSettlement(ref, { network });
           setConfirmation(result);
         } finally {
           setConfirming(false);
@@ -92,7 +94,7 @@ export function SettlementPanel({
         {txRef ? (
           <a
             className="btn btn-ghost btn-sm"
-            href={explorerTxUrl(DEFAULT_NETWORK, txRef)}
+            href={explorerTxUrl(network, txRef)}
             target="_blank"
             rel="noreferrer"
             style={{ marginTop: 8 }}
@@ -233,7 +235,7 @@ export function SettlementPanel({
         disabled={!isConnected || status === "signing" || status === "switching"}
       >
         {status === "switching"
-          ? `Switching to ${DEFAULT_NETWORK.name}…`
+          ? `Switching to ${network.name}…`
           : status === "signing"
           ? "Settling on Tempo…"
           : batch.length === 0

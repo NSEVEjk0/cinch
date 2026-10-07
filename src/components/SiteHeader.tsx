@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
 import { WalletButton } from "./WalletButton";
+import { NetworkSwitch } from "./NetworkSwitch";
 
 const LINKS = [
   { href: "/app", label: "Circles" },
@@ -38,7 +39,7 @@ export function SiteHeader() {
               <Link
                 key={l.href}
                 href={l.href}
-                className="btn btn-quiet btn-sm"
+                className="btn btn-quiet btn-sm nav-link-text"
                 style={{
                   color: active ? "var(--text)" : "var(--text-soft)",
                   fontWeight: active ? 540 : 500,
@@ -48,7 +49,9 @@ export function SiteHeader() {
               </Link>
             );
           })}
-          <span style={{ width: 10 }} />
+          <span className="net-switch-wrap" style={{ marginLeft: 4 }}>
+            <NetworkSwitch />
+          </span>
           <WalletButton />
         </nav>
       </div>

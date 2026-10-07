@@ -15,9 +15,11 @@ import {
 import { SCENARIOS, scenarioToCircle } from "@/lib/scenarios";
 import { clearRoom } from "@/lib/netting";
 import { formatPercent } from "@/lib/money";
+import { useNetwork } from "@/lib/useNetwork";
 
 export default function AppPage() {
   const router = useRouter();
+  const network = useNetwork();
   const [circles, setCircles] = useState<Circle[]>([]);
   const [name, setName] = useState("");
   const [cadence, setCadence] = useState<Circle["cadence"]>("once");
@@ -29,7 +31,7 @@ export default function AppPage() {
   }, []);
 
   function create() {
-    const circle = createCircle({ name, cadence });
+    const circle = createCircle({ name, cadence, defaultToken: network.tokens[0] });
     saveCircle(circle);
     router.push(`/circle/${circle.id}`);
   }

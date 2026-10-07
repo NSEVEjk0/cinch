@@ -22,15 +22,15 @@
 import { useCallback, useState } from "react";
 import { useSendTransaction, useSendCalls, useSwitchChain, useChainId } from "wagmi";
 import type { TempoCall } from "./batch";
-import { DEFAULT_NETWORK } from "./tempo";
+import { useNetwork } from "./useNetwork";
 import { tempoModeratoChain, tempoMainnetChain } from "./wagmi";
 
 export type SettleStatus = "idle" | "switching" | "signing" | "sent" | "error";
 
-const targetChain =
-  DEFAULT_NETWORK.key === "mainnet" ? tempoMainnetChain : tempoModeratoChain;
-
 export function useSettlement() {
+  const network = useNetwork();
+  const targetChain =
+    network.key === "mainnet" ? tempoMainnetChain : tempoModeratoChain;
   const chainId = useChainId();
   const { switchChainAsync } = useSwitchChain();
   const { sendTransactionAsync } = useSendTransaction();
@@ -57,7 +57,7 @@ export function useSettlement() {
           await switchChainAsync({ chainId: targetChain.id });
         } catch {
           setError(
-            `Your wallet needs to be on ${DEFAULT_NETWORK.name} to settle. Approve the network switch and try again.`
+            `Your wallet needs to be on ${network.name} to settle. Approve the network switch and try again.`
           );
           setStatus("error");
           return null;
@@ -88,12 +88,12 @@ export function useSettlement() {
         setStatus("sent");
         return ref;
       } catch (err) {
-        setError(explainError(err));
+        setError(explainError(err, network.name));
         setStatus("error");
         return null;
       }
     },
-    [chainId, switchChainAsync, sendTransactionAsync, sendCallsAsync]
+    [chainId, targetChain.id, network.name, switchChainAsync, sendTransactionAsync, sendCallsAsync]
   );
 
   const reset = useCallback(() => {
@@ -129,7 +129,7 @@ function resolveRef(result: unknown): string {
 }
 
 /** Turn a wallet/RPC error into something a person can act on. */
-function explainError(err: unknown): string {
+function explainError(err: unknown, networkName: string): string {
   const raw = err instanceof Error ? err.message : String(err);
   const lower = raw.toLowerCase();
   if (lower.includes("user rejected") || lower.includes("user denied")) {
@@ -139,7 +139,7 @@ function explainError(err: unknown): string {
     return "A party does not hold enough to cover their net position. Try liquidity-aware clearing, or top up and retry.";
   }
   if (lower.includes("chain") && lower.includes("match")) {
-    return `Your wallet is on the wrong network — switch to ${DEFAULT_NETWORK.name} and try again.`;
+    return `Your wallet is on the wrong network — switch to ${networkName} and try again.`;
   }
   if (lower.includes("does not support") || lower.includes("wallet_sendcalls") || lower.includes("method not")) {
     return "This wallet does not support atomic batches. Each leg can still be sent individually — or use a wallet with EIP-5792 support.";

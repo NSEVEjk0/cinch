@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CircleDiagram } from "@/components/CircleDiagram";
 import { SettlementPanel } from "@/components/SettlementPanel";
+import { BackButton } from "@/components/BackButton";
+import { TokenSwitch } from "@/components/TokenSwitch";
 import {
   loadCircle,
   saveCircle,
@@ -40,6 +42,11 @@ export default function CirclePage() {
   function persist(next: Circle) {
     setCircle(next);
     saveCircle(next);
+  }
+
+  function changeToken(token: Circle["defaultToken"]) {
+    if (!circle) return;
+    persist({ ...circle, defaultToken: token });
   }
 
   function addParty(p: Party) {
@@ -98,31 +105,26 @@ export default function CirclePage() {
     );
   }
 
-  const token = circle.defaultToken;
-
   return (
     <>
       <SiteHeader />
       <main className="shell" style={{ paddingTop: 36, paddingBottom: 60 }}>
         {/* header */}
+        <div style={{ marginBottom: 20 }}>
+          <BackButton fallback="/app" label="Circles" />
+        </div>
         <div className="between wrap" style={{ gap: 16, marginBottom: 28 }}>
           <div>
-            <button
-              className="btn btn-quiet btn-sm"
-              style={{ padding: 0, marginBottom: 8 }}
-              onClick={() => router.push("/app")}
-            >
-              ← Circles
-            </button>
-            <div className="row" style={{ gap: 12 }}>
+            <div className="row wrap" style={{ gap: 12 }}>
               <h1 className="display" style={{ fontSize: "clamp(1.7rem, 3.4vw, 2.4rem)", margin: 0 }}>
                 {circle.name}
               </h1>
               <span className="chip">{circle.cadence === "once" ? "one-off" : circle.cadence}</span>
             </div>
           </div>
-          <div className="chip chip-mint">
-            <span className="dot" /> {token.symbol}
+          <div className="row wrap" style={{ gap: 10 }}>
+            <ShareButton />
+            <TokenSwitch value={circle.defaultToken} onChange={changeToken} />
           </div>
         </div>
 
@@ -390,6 +392,25 @@ function ObligationList({
 function partyNameShort(circle: Circle, address: string): string {
   const name = partyName(circle, address);
   return name.startsWith("0x") ? shortAddress(name) : name;
+}
+
+function ShareButton() {
+  const [copied, setCopied] = useState(false);
+  async function share() {
+    if (typeof window === "undefined") return;
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
+  return (
+    <button className="btn btn-ghost btn-sm" onClick={share} title="Copy a link to this circle">
+      {copied ? "Link copied ✓" : "Share circle"}
+    </button>
+  );
 }
 
 function MiniToggle({

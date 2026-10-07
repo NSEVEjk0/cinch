@@ -362,11 +362,73 @@ a {
   }
 }
 
+/* On phones, free up header room: hide the text nav links (the footer and the
+   logo still reach everything) and tighten the network switch. */
+@media (max-width: 560px) {
+  .nav-link-text {
+    display: none;
+  }
+  .segment button {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+  }
+}
+
 html {
   overflow-x: hidden;
 }
 body {
   overflow-x: hidden;
+}
+
+/* --------------------------------- modal --------------------------------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(4, 7, 10, 0.72);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fade-in 0.2s ease both;
+}
+.modal {
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+  box-shadow: var(--shadow-lift);
+  animation: rise 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* ------------------------------ segmented ------------------------------- */
+/* A pill with two or more mutually-exclusive options (network/token switch). */
+.segment {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--ink-900);
+}
+.segment button {
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  transition: all 0.18s ease;
+}
+.segment button[data-active="true"] {
+  background: linear-gradient(180deg, var(--mint-400), var(--mint-500));
+  color: #04120d;
+  font-weight: 600;
 }
 
 .fade-in {

@@ -12,7 +12,7 @@
 import { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import type { Circle, SettlementRecord } from "@/lib/circle";
-import { partyName, toSettlementRecord } from "@/lib/circle";
+import { partyName, toSettlementRecord, isCompleted } from "@/lib/circle";
 import type { ClearingResult } from "@/lib/types";
 import { buildSettlementBatch } from "@/lib/batch";
 import { useSettlement } from "@/lib/useSettlement";
@@ -93,6 +93,28 @@ export function SettlementPanel({
     await record(ref, ref ? [ref, ...txRefs] : txRefs, false);
   }
 
+  // A one-off circle that has already been cleared is done — show a persistent
+  // completed state (not the settle UI) when the user reopens it later.
+  if (isCompleted(circle) && status !== "sent") {
+    const last = circle.settlements![circle.settlements!.length - 1];
+    return (
+      <div className="card card-pad glow-ring">
+        <div className="row" style={{ gap: 10, marginBottom: 12 }}>
+          <span aria-hidden="true" style={checkBadge}>✓</span>
+          <h2 className="display" style={{ fontSize: "1.3rem", margin: 0 }}>
+            Circle completed.
+          </h2>
+        </div>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Cleared {new Date(last.at).toLocaleDateString()} ·{" "}
+          {last.transfers.length} transfer{last.transfers.length === 1 ? "" : "s"} ·{" "}
+          {Math.round(last.compressionRatio * 100)}% compressed. See the full record in the
+          settlement history below.
+        </p>
+      </div>
+    );
+  }
+
   if (circle.obligations.filter((o) => !o.disputed).length === 0) {
     return (
       <div className="card card-pad">
@@ -108,9 +130,9 @@ export function SettlementPanel({
     return (
       <div className="card card-pad glow-ring">
         <div className="row" style={{ gap: 10, marginBottom: 14 }}>
-          <span className="dot" />
+          <span aria-hidden="true" style={checkBadge}>✓</span>
           <h2 className="display" style={{ fontSize: "1.3rem", margin: 0 }}>
-            Circle cleared.
+            {circle.cadence === "once" ? "Circle completed." : "Circle cleared."}
           </h2>
         </div>
         <p className="muted" style={{ marginTop: 0 }}>
@@ -164,9 +186,15 @@ export function SettlementPanel({
         ) : null}
 
         <div style={{ marginTop: 16 }}>
-          <button className="btn btn-quiet btn-sm" onClick={() => { reset(); setConfirmation(null); }}>
-            Clear again
-          </button>
+          {circle.cadence === "once" ? (
+            <p className="faint" style={{ fontSize: "0.82rem", margin: 0 }}>
+              This circle is complete. You can review it any time from your circles list.
+            </p>
+          ) : (
+            <button className="btn btn-quiet btn-sm" onClick={() => { reset(); setConfirmation(null); }}>
+              Start the next round →
+            </button>
+          )}
         </div>
       </div>
     );
@@ -333,3 +361,16 @@ export function SettlementPanel({
     </div>
   );
 }
+
+const checkBadge: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 26,
+  height: 26,
+  borderRadius: "50%",
+  background: "linear-gradient(180deg, var(--mint-400), var(--mint-500))",
+  color: "#04120d",
+  fontSize: "0.9rem",
+  fontWeight: 700,
+};

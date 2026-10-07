@@ -11,6 +11,7 @@ import {
   saveCircle,
   deleteCircle,
   newId,
+  isCompleted,
   type Circle,
 } from "@/lib/circle";
 import { SCENARIOS, scenarioToCircle } from "@/lib/scenarios";
@@ -68,6 +69,9 @@ export default function AppPage() {
     if (!window.confirm("Delete this circle? It only lives in this browser.")) return;
     setCircles(deleteCircle(id));
   }
+
+  const activeCircles = circles.filter((c) => !isCompleted(c));
+  const completedCircles = circles.filter((c) => isCompleted(c));
 
   return (
     <>
@@ -199,63 +203,110 @@ export default function AppPage() {
           </div>
         </div>
 
-        {/* existing circles */}
+        {/* existing circles — split into active and completed */}
         {ready && circles.length > 0 ? (
-          <div style={{ marginTop: 44 }}>
-            <h2 className="display" style={{ fontSize: "1.3rem", marginBottom: 18 }}>
-              Saved circles
-            </h2>
-            <div className="grid" style={{ gap: 12 }}>
-              {circles.map((c) => {
-                const result = clearRoom(c.obligations);
-                return (
-                  <div
-                    key={c.id}
-                    className="card"
-                    style={{ padding: "18px 22px" }}
-                  >
-                    <div className="between wrap" style={{ gap: 14 }}>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => router.push(`/circle/${c.id}`)}
-                        onKeyDown={(e) => e.key === "Enter" && router.push(`/circle/${c.id}`)}
-                        style={{ cursor: "pointer", flex: 1, minWidth: 0 }}
-                      >
-                        <div className="row" style={{ gap: 10 }}>
-                          <span style={{ fontSize: "1.05rem", fontWeight: 540 }}>{c.name}</span>
-                          <span className="chip">
-                            {c.cadence === "once" ? "one-off" : c.cadence}
-                          </span>
-                        </div>
-                        <div className="faint mono" style={{ fontSize: "0.8rem", marginTop: 6 }}>
-                          {c.parties.length} parties · {c.obligations.length} obligations
-                          {c.obligations.length > 0
-                            ? ` · ${formatPercent(result.stats.compressionRatio)} compressible`
-                            : ""}
-                        </div>
-                      </div>
-                      <div className="row" style={{ gap: 8 }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => router.push(`/circle/${c.id}`)}>
-                          Open
-                        </button>
-                        <button
-                          className="btn btn-quiet btn-sm"
-                          style={{ color: "var(--rose-400)" }}
-                          onClick={() => remove(c.id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <>
+            {activeCircles.length > 0 ? (
+              <div style={{ marginTop: 44 }}>
+                <h2 className="display" style={{ fontSize: "1.3rem", marginBottom: 18 }}>
+                  Active circles
+                </h2>
+                <div className="grid" style={{ gap: 12 }}>
+                  {activeCircles.map((c) => (
+                    <CircleRow key={c.id} circle={c} onOpen={() => router.push(`/circle/${c.id}`)} onDelete={() => remove(c.id)} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {completedCircles.length > 0 ? (
+              <div style={{ marginTop: 44 }}>
+                <div className="row" style={{ gap: 10, marginBottom: 18 }}>
+                  <h2 className="display" style={{ fontSize: "1.3rem", margin: 0 }}>
+                    Completed
+                  </h2>
+                  <span className="chip chip-mint">{completedCircles.length}</span>
+                </div>
+                <div className="grid" style={{ gap: 12 }}>
+                  {completedCircles.map((c) => (
+                    <CircleRow key={c.id} circle={c} completed onOpen={() => router.push(`/circle/${c.id}`)} onDelete={() => remove(c.id)} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </>
         ) : null}
       </main>
       <SiteFooter />
     </>
   );
 }
+
+function CircleRow({
+  circle,
+  completed,
+  onOpen,
+  onDelete,
+}: {
+  circle: Circle;
+  completed?: boolean;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  const result = clearRoom(circle.obligations, { mode: circle.nettingMode ?? "min-transfers" });
+  const settlements = circle.settlements?.length ?? 0;
+  return (
+    <div className="card" style={{ padding: "18px 22px", opacity: completed ? 0.82 : 1 }}>
+      <div className="between wrap" style={{ gap: 14 }}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onOpen}
+          onKeyDown={(e) => e.key === "Enter" && onOpen()}
+          style={{ cursor: "pointer", flex: 1, minWidth: 0 }}
+        >
+          <div className="row" style={{ gap: 10 }}>
+            {completed ? (
+              <span aria-hidden="true" style={rowCheck}>✓</span>
+            ) : null}
+            <span style={{ fontSize: "1.05rem", fontWeight: 540 }}>{circle.name}</span>
+            <span className="chip">{circle.cadence === "once" ? "one-off" : circle.cadence}</span>
+            {completed ? <span className="chip chip-mint">completed</span> : null}
+          </div>
+          <div className="faint mono" style={{ fontSize: "0.8rem", marginTop: 6 }}>
+            {completed
+              ? `${settlements} settlement${settlements === 1 ? "" : "s"} · last cleared ${
+                  circle.lastClearedAt ? new Date(circle.lastClearedAt).toLocaleDateString() : "—"
+                }`
+              : `${circle.parties.length} parties · ${circle.obligations.length} obligations${
+                  circle.obligations.length > 0
+                    ? ` · ${formatPercent(result.stats.compressionRatio)} compressible`
+                    : ""
+                }`}
+          </div>
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          <button className="btn btn-ghost btn-sm" onClick={onOpen}>
+            {completed ? "Review" : "Open"}
+          </button>
+          <button className="btn btn-quiet btn-sm" style={{ color: "var(--rose-400)" }} onClick={onDelete}>
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const rowCheck: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 20,
+  height: 20,
+  borderRadius: "50%",
+  background: "linear-gradient(180deg, var(--mint-400), var(--mint-500))",
+  color: "#04120d",
+  fontSize: "0.72rem",
+  fontWeight: 700,
+};

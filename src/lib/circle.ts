@@ -192,6 +192,28 @@ export function partyName(circle: Circle, address: string): string {
   return p?.name || address;
 }
 
+/* ------------------------------ status ------------------------------ */
+
+/** Has this circle ever been cleared? */
+export function hasCleared(circle: Circle): boolean {
+  return (circle.settlements?.length ?? 0) > 0;
+}
+
+/**
+ * A circle is "completed" when it is a one-off that has been cleared at least
+ * once (its whole purpose is done). A standing circle is never "completed" —
+ * it recurs — it is instead "active" and simply shows when it last cleared.
+ */
+export function isCompleted(circle: Circle): boolean {
+  return circle.cadence === "once" && hasCleared(circle);
+}
+
+/** True when the circle still has obligations waiting to be cleared. */
+export function hasOutstanding(circle: Circle): boolean {
+  return circle.obligations.some((o) => !o.disputed);
+}
+
+
 /* ------------------------------ cadence ------------------------------ */
 
 const PERIOD_MS: Record<Exclude<Cadence, "once">, number> = {

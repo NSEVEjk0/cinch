@@ -312,7 +312,9 @@ export function SettlementPanel({
           ) : null}
           {error ? <p style={{ color: "var(--rose-400)", marginTop: 12, fontSize: "0.88rem" }}>{error}</p> : null}
           <p className="faint" style={{ fontSize: "0.78rem", marginTop: 12, textAlign: "center" }}>
-            One atomic transaction — every leg settles, or none does.
+            {batch.length > 1
+              ? "One atomic transaction — every leg settles, or none does. If your wallet can't batch, Cinch will offer to settle leg by leg instead."
+              : "One atomic transaction — every leg settles, or none does."}
           </p>
         </>
       )}

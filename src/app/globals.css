@@ -1,0 +1,345 @@
+/*
+ * Cinch design system.
+ *
+ * A dark, precise, "financial instrument" aesthetic: deep ink background, a
+ * single confident accent (a cool mint/teal that reads as "cleared / settled"),
+ * fine hairlines, generous whitespace, and a typographic scale that lets the
+ * numbers do the talking. Nothing decorative that a serious treasury user
+ * wouldn't trust.
+ */
+
+:root {
+  /* Palette — ink base, cool accent. */
+  --ink-900: #080b0f;
+  --ink-850: #0b0f14;
+  --ink-800: #0e1319;
+  --ink-700: #141b23;
+  --ink-600: #1b242e;
+  --ink-500: #263340;
+  --line: rgba(148, 170, 190, 0.14);
+  --line-strong: rgba(148, 170, 190, 0.26);
+
+  --text: #e8eef4;
+  --text-soft: #a7b4c2;
+  --text-faint: #697785;
+
+  /* Accent: "cleared" mint. Plus a warm counter for debt/owed. */
+  --mint-500: #4fe3b0;
+  --mint-400: #6ff0c3;
+  --mint-glow: rgba(79, 227, 176, 0.16);
+  --amber-400: #f0b86f;
+  --rose-400: #f08a8a;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --radius-lg: 22px;
+
+  --shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 20px 60px -30px rgba(0, 0, 0, 0.8);
+  --shadow-lift: 0 30px 80px -40px rgba(0, 0, 0, 0.9);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "JetBrains Mono", Menlo,
+    monospace;
+
+  --maxw: 1120px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 72% -10%, rgba(79, 227, 176, 0.07), transparent 60%),
+    radial-gradient(900px 500px at 10% 0%, rgba(90, 140, 255, 0.05), transparent 55%),
+    var(--ink-900);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.005em;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: var(--mint-glow);
+  color: var(--mint-400);
+}
+
+/* --------------------------------- layout -------------------------------- */
+
+.shell {
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+.section {
+  padding: 96px 0;
+}
+
+@media (max-width: 720px) {
+  .section {
+    padding: 60px 0;
+  }
+}
+
+/* ------------------------------ typography ------------------------------- */
+
+.display {
+  font-weight: 560;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  margin: 0;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--mint-400);
+  margin: 0;
+}
+
+.muted {
+  color: var(--text-soft);
+}
+.faint {
+  color: var(--text-faint);
+}
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* -------------------------------- buttons -------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font: inherit;
+  font-weight: 520;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  padding: 12px 22px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease, opacity 0.2s ease;
+  white-space: nowrap;
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, var(--mint-400), var(--mint-500));
+  color: #04120d;
+  box-shadow: 0 10px 30px -12px var(--mint-glow), 0 0 0 1px rgba(79, 227, 176, 0.3) inset;
+}
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 16px 44px -14px var(--mint-glow), 0 0 0 1px rgba(79, 227, 176, 0.5) inset;
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--line-strong);
+}
+
+.btn-quiet {
+  background: transparent;
+  border: 0;
+  color: var(--text-soft);
+  padding: 10px 12px;
+}
+.btn-quiet:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 0.86rem;
+}
+
+/* --------------------------------- cards --------------------------------- */
+
+.card {
+  background: linear-gradient(180deg, var(--ink-800), var(--ink-850));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+}
+.card-pad {
+  padding: 26px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+}
+.chip-mint {
+  color: var(--mint-400);
+  border-color: rgba(79, 227, 176, 0.3);
+  background: var(--mint-glow);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mint-400);
+  box-shadow: 0 0 10px var(--mint-400);
+}
+
+/* --------------------------------- forms --------------------------------- */
+
+.field {
+  width: 100%;
+  background: var(--ink-900);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font: inherit;
+  padding: 11px 14px;
+  margin-top: 6px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.field:focus {
+  outline: none;
+  border-color: rgba(79, 227, 176, 0.5);
+  box-shadow: 0 0 0 3px var(--mint-glow);
+}
+.field.mono {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* ------------------------------- utilities ------------------------------- */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.wrap {
+  flex-wrap: wrap;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+.grid {
+  display: grid;
+}
+.hairline {
+  height: 1px;
+  background: var(--line);
+  border: 0;
+}
+
+.fade-in {
+  animation: fade-in 0.5s ease both;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise {
+  animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.glow-ring {
+  position: relative;
+}
+.glow-ring::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(79, 227, 176, 0.5), transparent 40%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

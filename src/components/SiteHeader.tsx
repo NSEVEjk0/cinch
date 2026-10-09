@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
-import { WalletButton } from "./WalletButton";
+import { AccountButton } from "./AccountButton";
 import { NetworkSwitch } from "./NetworkSwitch";
 
 const LINKS = [
@@ -37,7 +37,7 @@ export function SiteHeader() {
           <span className="net-switch-wrap" style={{ margin: "0 6px" }}>
             <NetworkSwitch />
           </span>
-          <WalletButton />
+          <AccountButton />
         </nav>
       </div>
     </header>

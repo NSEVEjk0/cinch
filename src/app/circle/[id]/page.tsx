@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CircleDiagram } from "@/components/CircleDiagram";
 import { SettlementPanel } from "@/components/SettlementPanel";
@@ -10,6 +9,7 @@ import { BalancesCard } from "@/components/BalancesCard";
 import { CinchAccountCard } from "@/components/CinchAccountCard";
 import { BackButton } from "@/components/BackButton";
 import { TokenSwitch } from "@/components/TokenSwitch";
+import { useCinchAccount } from "@/lib/useSettlement";
 import {
   loadCircle,
   saveCircle,
@@ -26,6 +26,7 @@ import {
   cadenceDue,
 } from "@/lib/circle";
 import { clearRoom } from "@/lib/netting";
+import { discountActive, isOverdue } from "@/lib/invoice";
 import { openCertificate } from "@/lib/certificate";
 import { downloadExport } from "@/lib/accounting";
 import { useNetwork } from "@/lib/useNetwork";
@@ -262,6 +263,10 @@ function AddObligation({
   const [creditor, setCreditor] = useState("");
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
+  const [showTerms, setShowTerms] = useState(false);
+  const [dueDate, setDueDate] = useState("");
+  const [discountPct, setDiscountPct] = useState("");
+  const [earlyPayBy, setEarlyPayBy] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const token = circle.defaultToken;
@@ -291,6 +296,15 @@ function AddObligation({
     }
     if (units <= 0n) return setError("The amount must be above zero.");
 
+    // Optional invoice terms.
+    let earlyPayDiscountBps: number | undefined;
+    if (discountPct.trim()) {
+      const pct = Number(discountPct);
+      if (!isFinite(pct) || pct < 0 || pct > 100) return setError("Discount must be a percentage between 0 and 100.");
+      earlyPayDiscountBps = Math.round(pct * 100);
+    }
+    if (earlyPayDiscountBps && !earlyPayBy) return setError("Set the date the early-pay discount applies up to.");
+
     onAddParty(d);
     onAddParty(c);
     onAdd({
@@ -301,11 +315,17 @@ function AddObligation({
       token,
       reference: reference.trim() || "obligation",
       createdAt: new Date().toISOString(),
+      ...(dueDate ? { dueDate } : {}),
+      ...(earlyPayDiscountBps ? { earlyPayDiscountBps, earlyPayBy } : {}),
     });
     setDebtor("");
     setCreditor("");
     setAmount("");
     setReference("");
+    setDueDate("");
+    setDiscountPct("");
+    setEarlyPayBy("");
+    setShowTerms(false);
   }
 
   return (
@@ -362,6 +382,46 @@ function AddObligation({
         </label>
       </div>
       {error ? <p style={{ color: "var(--rose-400)", marginTop: 12, fontSize: "0.9rem" }}>{error}</p> : null}
+
+      {!showTerms ? (
+        <button
+          className="btn btn-quiet btn-sm"
+          style={{ color: "var(--accent)", padding: 0, marginTop: 14 }}
+          onClick={() => setShowTerms(true)}
+        >
+          + invoice terms (due date, early-pay discount)
+        </button>
+      ) : (
+        <div className="stack" style={{ gap: 12, marginTop: 16 }}>
+          <div className="hairline" />
+          <span className="label">Invoice terms (optional)</span>
+          <div className="g2" style={{ gap: 12 }}>
+            <label className="stack">
+              <span className="label">Due date</span>
+              <input className="field" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            </label>
+            <label className="stack">
+              <span className="label">Early-pay discount %</span>
+              <input
+                className="field mono"
+                placeholder="2"
+                value={discountPct}
+                onChange={(e) => setDiscountPct(e.target.value)}
+              />
+            </label>
+          </div>
+          {discountPct.trim() ? (
+            <label className="stack">
+              <span className="label">…if cleared on or before</span>
+              <input className="field" type="date" value={earlyPayBy} onChange={(e) => setEarlyPayBy(e.target.value)} />
+            </label>
+          ) : null}
+          <button className="btn btn-quiet btn-sm" style={{ padding: 0, alignSelf: "flex-start" }} onClick={() => setShowTerms(false)}>
+            hide terms
+          </button>
+        </div>
+      )}
+
       <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={submit}>
         Add to circle
       </button>
@@ -421,6 +481,7 @@ function ObligationList({
                 {o.disputed && o.disputeReason ? (
                   <span style={{ color: "var(--amber-400)" }}> · {o.disputeReason}</span>
                 ) : null}
+                <ObligationTerms o={o} />
               </div>
             </div>
             <div className="row" style={{ gap: 14 }}>
@@ -460,6 +521,28 @@ function ObligationList({
 function partyNameShort(circle: Circle, address: string): string {
   const name = partyName(circle, address);
   return name.startsWith("0x") ? shortAddress(name) : name;
+}
+
+/** Inline invoice terms shown under an obligation: due date, discount, overdue. */
+function ObligationTerms({ o }: { o: Obligation }) {
+  const due = o.dueDate ? new Date(o.dueDate.length === 10 ? `${o.dueDate}T00:00:00` : o.dueDate) : null;
+  const overdue = isOverdue(o);
+  const discLive = discountActive(o);
+  if (!due && !o.earlyPayDiscountBps) return null;
+  return (
+    <span className="row" style={{ gap: 6, display: "inline-flex", marginLeft: 8, flexWrap: "wrap" }}>
+      {due ? (
+        <span className="chip" style={{ color: overdue ? "var(--neg)" : "var(--text-3)" }}>
+          {overdue ? "overdue" : `due ${due.toLocaleDateString()}`}
+        </span>
+      ) : null}
+      {o.earlyPayDiscountBps ? (
+        <span className="chip" style={{ color: discLive ? "var(--pos)" : "var(--text-4)" }}>
+          {(o.earlyPayDiscountBps / 100).toString()}% early-pay{discLive ? " active" : " expired"}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 function ShareButton({ circle }: { circle: Circle }) {
@@ -560,11 +643,11 @@ function ModeToggle({ mode, onChange }: { mode: NettingMode; onChange: (m: Netti
 /* -------------------------------------------------------------------------- */
 
 function AttestPanel({ circle, onAttest }: { circle: Circle; onAttest: (p: Party) => void }) {
-  const { address, isConnected } = useAccount();
-  if (!isConnected || !address) return null;
+  const { address } = useCinchAccount();
+  if (!address) return null;
 
   const me = circle.parties.find((p) => p.address.toLowerCase() === address.toLowerCase());
-  if (!me) return null; // the connected wallet isn't a listed party
+  if (!me) return null; // the account isn't a listed party
 
   if (me.attestedAt) {
     return (

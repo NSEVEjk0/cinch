@@ -10,7 +10,6 @@
  */
 
 import { useMemo, useState } from "react";
-import { useAccount } from "wagmi";
 import type { Circle, SettlementRecord } from "@/lib/circle";
 import { partyName, toSettlementRecord, isCompleted } from "@/lib/circle";
 import type { ClearingResult } from "@/lib/types";
@@ -30,7 +29,6 @@ export function SettlementPanel({
   result: ClearingResult;
   onSettled: (record: SettlementRecord) => void;
 }) {
-  const { isConnected: walletConnected } = useAccount();
   const network = useNetwork();
   const {
     settle,
@@ -44,11 +42,12 @@ export function SettlementPanel({
     reset,
   } = useSettlement();
   const { enabled: accountEnabled } = useCinchAccount();
-  // Either signer satisfies "ready to settle": the connected wallet, or the
-  // self-custodial Cinch account.
-  const isConnected = walletConnected || accountEnabled;
+  // The self-custodial Cinch account is the signer.
+  const isConnected = accountEnabled;
   const [confirmation, setConfirmation] = useState<ChainConfirmation | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState("");
 
   const batch = useMemo(() => buildSettlementBatch(result.transfers), [result.transfers]);
   const token = circle.defaultToken;
@@ -88,7 +87,13 @@ export function SettlementPanel({
   }
 
   async function onSettle() {
-    const ref = await settle(batch);
+    // Scheduled clearing: time-lock the atomic batch with Tempo's validAfter.
+    const validAfter =
+      scheduleOpen && scheduleAt
+        ? Math.floor(new Date(scheduleAt).getTime() / 1000)
+        : undefined;
+    const schedule = validAfter && validAfter > Math.floor(Date.now() / 1000) ? { validAfter } : undefined;
+    const ref = await settle(batch, schedule);
     await record(ref, ref ? [ref, ...txRefs] : txRefs, true);
   }
 
@@ -346,6 +351,39 @@ export function SettlementPanel({
         </div>
       ) : (
         <>
+          {batch.length > 0 && isConnected ? (
+            <div style={{ marginBottom: 12 }}>
+              {!scheduleOpen ? (
+                <button
+                  className="btn btn-quiet btn-sm"
+                  style={{ color: "var(--accent)", padding: 0 }}
+                  onClick={() => setScheduleOpen(true)}
+                >
+                  Schedule this clearing for later →
+                </button>
+              ) : (
+                <div
+                  className="stack"
+                  style={{ gap: 8, padding: 14, borderRadius: "var(--r-xs)", border: "1px solid var(--line)", background: "var(--surface-2)" }}
+                >
+                  <span className="label">Clear automatically after</span>
+                  <input
+                    className="field"
+                    type="datetime-local"
+                    value={scheduleAt}
+                    onChange={(e) => setScheduleAt(e.target.value)}
+                  />
+                  <p className="faint" style={{ fontSize: "0.78rem", margin: 0 }}>
+                    Signs the batch now with Tempo&apos;s <span className="mono">validAfter</span>{" "}
+                    time-lock — it can only execute on-chain once that moment passes.
+                  </p>
+                  <button className="btn btn-quiet btn-sm" style={{ padding: 0, alignSelf: "flex-start" }} onClick={() => { setScheduleOpen(false); setScheduleAt(""); }}>
+                    clear now instead
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : null}
           <button
             className="btn btn-primary"
             style={{ width: "100%" }}
@@ -358,11 +396,13 @@ export function SettlementPanel({
               ? "Settling on Tempo…"
               : batch.length === 0
               ? "Mark circle cleared"
+              : scheduleOpen && scheduleAt
+              ? `Schedule settlement · ${batch.length} transfer${batch.length === 1 ? "" : "s"}`
               : `Settle the circle · ${batch.length} transfer${batch.length === 1 ? "" : "s"}, one signature`}
           </button>
           {!isConnected ? (
             <p className="faint" style={{ fontSize: "0.82rem", marginTop: 10, textAlign: "center" }}>
-              Connect a wallet or switch on your Cinch account to settle. Previewing needs nothing.
+              Create your Cinch account above to settle. Previewing the clearing needs nothing.
             </p>
           ) : null}
           {error ? <p style={{ color: "var(--rose-400)", marginTop: 12, fontSize: "0.88rem" }}>{error}</p> : null}

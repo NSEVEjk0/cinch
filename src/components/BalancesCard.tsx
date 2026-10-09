@@ -11,17 +11,17 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import { useAccount } from "wagmi";
 import type { Circle } from "@/lib/circle";
 import { partyName } from "@/lib/circle";
 import type { ClearingResult } from "@/lib/types";
 import { readBalance } from "@/lib/chain";
 import { useNetwork } from "@/lib/useNetwork";
+import { useCinchAccount } from "@/lib/useSettlement";
 import { formatAmount, shortAddress } from "@/lib/money";
 
 export function BalancesCard({ circle, result }: { circle: Circle; result: ClearingResult }) {
   const network = useNetwork();
-  const { address } = useAccount();
+  const { address } = useCinchAccount();
   const token = circle.defaultToken;
   const [balances, setBalances] = useState<Record<string, bigint> | null>(null);
   const [loading, setLoading] = useState(false);

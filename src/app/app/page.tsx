@@ -15,6 +15,7 @@ import {
   type Circle,
 } from "@/lib/circle";
 import { SCENARIOS, scenarioToCircle } from "@/lib/scenarios";
+import { CreateTemplates } from "@/components/CreateTemplates";
 import { clearRoom } from "@/lib/netting";
 import { formatPercent } from "@/lib/money";
 import { useNetwork } from "@/lib/useNetwork";
@@ -201,6 +202,17 @@ export default function AppPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* templates — compile a situation into a circle */}
+        <div style={{ marginTop: 40 }}>
+          <h2 className="display" style={{ fontSize: "1.3rem", marginBottom: 6 }}>
+            Start from a template
+          </h2>
+          <p className="faint" style={{ fontSize: "0.86rem", marginBottom: 4 }}>
+            Turn a shared bill or a batch payout straight into a clearing circle.
+          </p>
+          <CreateTemplates />
         </div>
 
         {/* existing circles — split into active and completed */}

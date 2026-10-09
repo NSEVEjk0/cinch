@@ -35,6 +35,17 @@ export interface Obligation {
   /** Why it was disputed — shown in the audit trail. */
   disputeReason?: string;
   createdAt?: string;
+
+  /* ---- invoice fields (optional; a bare obligation stays a plain IOU) ---- */
+  /** ISO date the invoice is due. Powers overdue flags and scheduled netting. */
+  dueDate?: string;
+  /**
+   * Early-payment discount in basis points (100 = 1%). If the circle clears on
+   * or before `earlyPayBy`, the debtor owes `amount` less this discount.
+   */
+  earlyPayDiscountBps?: number;
+  /** ISO date the early-pay discount applies up to (inclusive). */
+  earlyPayBy?: string;
 }
 
 /** A party's standing in one token after netting the whole room. */

@@ -69,8 +69,8 @@ export const FEATURES = [
     body: "Every clearing is kept in the circle's history with the terms and the on-chain proof, and exports as a printable certificate — so a settlement is also a record you can file.",
   },
   {
-    title: "Agents can clear too",
-    body: "The same netting engine answers machines at POST /api/clear: an agent submits obligations and gets back the minimal settlement, so automated systems can net and settle without a browser.",
+    title: "Clear by API too",
+    body: "The same netting engine answers programs at POST /api/clear: submit obligations and get back the minimal settlement, so backends and automated systems can net and settle without a browser.",
   },
 ] as const;
 

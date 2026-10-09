@@ -1,9 +1,9 @@
 /**
- * Agent clearing endpoint.
+ * Programmatic clearing endpoint.
  *
- * A stateless API that lets a machine (an AI agent, a backend, an MCP tool) run
- * Cinch's netting without a browser: POST a set of obligations, get back the
- * minimal cleared settlement — the same engine the UI uses.
+ * A stateless API that lets any program (a backend, a bot, an automated
+ * system) run Cinch's netting without a browser: POST a set of obligations,
+ * get back the minimal cleared settlement — the same engine the UI uses.
  *
  * POST /api/clear
  *   {
@@ -17,7 +17,7 @@
  *
  * Returns the transfers, net positions, excluded obligations and headline
  * stats. Amounts in the request may be decimal strings or smallest-unit
- * integers; amounts out are decimal strings so the response is agent-friendly.
+ * integers; amounts out are decimal strings so the response is easy to consume.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
   });
 }
 
-/** A GET returns a tiny self-description so an agent can discover the shape. */
+/** A GET returns a tiny self-description so a caller can discover the shape. */
 export async function GET() {
   return NextResponse.json({
     service: "cinch-clear",

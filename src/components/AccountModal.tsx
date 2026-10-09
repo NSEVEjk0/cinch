@@ -18,7 +18,7 @@ import {
 } from "@/lib/cinchAccount";
 import { shortAddress } from "@/lib/money";
 
-type Mode = "choose" | "created" | "login";
+type Mode = "choose" | "intro" | "created" | "login";
 
 export function AccountModal({ onClose }: { onClose: () => void }) {
   const [mode, setMode] = useState<Mode>("choose");
@@ -70,7 +70,11 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
       >
         <div className="between" style={{ marginBottom: 6 }}>
           <h2 className="display" style={{ fontSize: "1.35rem", margin: 0 }}>
-            {mode === "created" ? "Save your recovery phrase" : "Your Cinch account"}
+            {mode === "created"
+              ? "Save your recovery phrase"
+              : mode === "intro"
+              ? "Create your Cinch wallet"
+              : "Your Cinch account"}
           </h2>
           {mode !== "created" ? (
             <button className="btn btn-quiet btn-sm" style={{ padding: 6 }} onClick={onClose} aria-label="Close">
@@ -80,7 +84,11 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {mode === "choose" ? (
-          <ChooseView onCreate={doCreate} onLogin={() => setMode("login")} />
+          <ChooseView onCreate={() => setMode("intro")} onLogin={() => setMode("login")} />
+        ) : null}
+
+        {mode === "intro" ? (
+          <IntroView onCreate={doCreate} onBack={() => setMode("choose")} />
         ) : null}
 
         {mode === "created" ? (
@@ -135,6 +143,50 @@ function ChooseView({ onCreate, onLogin }: { onCreate: () => void; onLogin: () =
   );
 }
 
+function IntroView({ onCreate, onBack }: { onCreate: () => void; onBack: () => void }) {
+  return (
+    <>
+      <p className="muted" style={{ fontSize: "0.92rem", margin: "0 0 16px", lineHeight: 1.6 }}>
+        To use Cinch you need a test wallet. It&apos;s self-custodial and created right here in your
+        browser — no extension, no sign-up, no email.
+      </p>
+      <ol className="stack" style={{ gap: 10, margin: "0 0 18px", paddingLeft: 18 }}>
+        <li className="muted" style={{ fontSize: "0.88rem" }}>
+          Tap <strong>Create wallet</strong> and Cinch generates your account.
+        </li>
+        <li className="muted" style={{ fontSize: "0.88rem" }}>
+          You&apos;ll get a <strong>12-word recovery phrase</strong> and a private key.
+        </li>
+        <li className="muted" style={{ fontSize: "0.88rem" }}>
+          <strong>Write them down and keep them private</strong> — they&apos;re how you log back in.
+        </li>
+      </ol>
+      <div
+        style={{
+          padding: 12,
+          borderRadius: "var(--r-xs)",
+          border: "1px solid var(--accent-line)",
+          background: "var(--accent-glow)",
+          marginBottom: 18,
+        }}
+      >
+        <p style={{ margin: 0, fontSize: "0.84rem", lineHeight: 1.5, color: "var(--text-2)" }}>
+          ⚠ This is a self-custodial wallet: <strong>if you lose your recovery phrase, Cinch cannot
+          help you get your wallet back.</strong> Only you ever hold it.
+        </p>
+      </div>
+      <div className="stack" style={{ gap: 10 }}>
+        <button className="btn btn-primary" onClick={onCreate}>
+          Create wallet
+        </button>
+        <button className="btn btn-quiet btn-sm" onClick={onBack}>
+          ← Back
+        </button>
+      </div>
+    </>
+  );
+}
+
 function CreatedView({
   mnemonic,
   privateKey,
@@ -168,7 +220,7 @@ function CreatedView({
       >
         <p className="faint" style={{ margin: 0, fontSize: "0.82rem", lineHeight: 1.5, color: "var(--text-2)" }}>
           ⚠ Write these 12 words down in order and keep them private. Anyone with them controls this
-          account, and Cinch cannot recover them for you.
+          account — and if you lose them, <strong>Cinch can&apos;t help you get your wallet back.</strong>
         </p>
       </div>
 

@@ -19,6 +19,12 @@ export const PROBLEM = {
   body: "When several parties owe each other — a DAO and its contributors, suppliers in a chain, friends after a trip — the obligations loop. A owes B, B owes C, C owes A. Paid one by one, that is a flurry of transfers for almost no change in anyone's real position. Today the only tools that fix it are a bank's internal ledger or a trusted spreadsheet, and someone always has to go first.",
 } as const;
 
+/** The solution, stated just as plainly. */
+export const SOLUTION = {
+  heading: "Net the whole circle, then settle it in one move.",
+  body: "Cinch is a multilateral clearinghouse. It gathers every obligation in a group, cancels the debts that loop, and reduces the rest to the fewest transfers anyone has to make — then settles that entire cleared circle as a single atomic transaction on Tempo. No one goes first. No one is left short. Here is how it works.",
+} as const;
+
 /** How Cinch answers it. */
 export const HOW = [
   {

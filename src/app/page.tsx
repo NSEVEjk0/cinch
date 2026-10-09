@@ -36,7 +36,7 @@ export default function HomePage() {
                 </Link>
               </div>
               <p className="faint" style={{ marginTop: 20, fontSize: "0.85rem" }}>
-                No account. Your wallet is your identity. Testnet by default — nothing real moves.
+                No account. Your wallet is your identity.
               </p>
             </div>
 

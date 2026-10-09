@@ -6,6 +6,8 @@ import { useAccount } from "wagmi";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CircleDiagram } from "@/components/CircleDiagram";
 import { SettlementPanel } from "@/components/SettlementPanel";
+import { BalancesCard } from "@/components/BalancesCard";
+import { CinchAccountCard } from "@/components/CinchAccountCard";
 import { BackButton } from "@/components/BackButton";
 import { TokenSwitch } from "@/components/TokenSwitch";
 import {
@@ -25,6 +27,7 @@ import {
 } from "@/lib/circle";
 import { clearRoom } from "@/lib/netting";
 import { openCertificate } from "@/lib/certificate";
+import { downloadExport } from "@/lib/accounting";
 import { useNetwork } from "@/lib/useNetwork";
 import { parseAmount, formatAmount, formatWithSymbol, formatPercent, isAddress, shortAddress } from "@/lib/money";
 import type { Obligation, NettingMode } from "@/lib/types";
@@ -226,6 +229,10 @@ export default function CirclePage() {
             </div>
 
             <ModeToggle mode={circle.nettingMode ?? "min-transfers"} onChange={changeMode} />
+
+            <BalancesCard circle={circle} result={result} />
+
+            <CinchAccountCard />
 
             {/* settlement */}
             <SettlementPanel circle={circle} result={result} onSettled={onSettled} />
@@ -595,8 +602,24 @@ function SettlementHistory({ circle }: { circle: Circle }) {
 
   return (
     <div className="card" style={{ overflow: "hidden" }}>
-      <div className="card-pad" style={{ padding: "16px 22px", borderBottom: "1px solid var(--line)" }}>
+      <div className="card-pad between" style={{ padding: "16px 22px", borderBottom: "1px solid var(--line)" }}>
         <span className="label">Settlement history · {settlements.length}</span>
+        <div className="row" style={{ gap: 6 }}>
+          <button
+            className="btn btn-quiet btn-sm"
+            onClick={() => downloadExport(circle, "csv")}
+            title="Download the full ledger as CSV"
+          >
+            CSV
+          </button>
+          <button
+            className="btn btn-quiet btn-sm"
+            onClick={() => downloadExport(circle, "json")}
+            title="Download the full ledger as JSON"
+          >
+            JSON
+          </button>
+        </div>
       </div>
       <div>
         {settlements.map((s) => (

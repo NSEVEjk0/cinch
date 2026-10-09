@@ -15,7 +15,7 @@ import type { Circle, SettlementRecord } from "@/lib/circle";
 import { partyName, toSettlementRecord, isCompleted } from "@/lib/circle";
 import type { ClearingResult } from "@/lib/types";
 import { buildSettlementBatch } from "@/lib/batch";
-import { useSettlement } from "@/lib/useSettlement";
+import { useSettlement, useCinchAccount } from "@/lib/useSettlement";
 import { confirmSettlement, type ChainConfirmation } from "@/lib/chain";
 import { formatAmount, formatWithSymbol, formatPercent, shortAddress } from "@/lib/money";
 import { explorerTxUrl } from "@/lib/tempo";
@@ -30,7 +30,7 @@ export function SettlementPanel({
   result: ClearingResult;
   onSettled: (record: SettlementRecord) => void;
 }) {
-  const { isConnected } = useAccount();
+  const { isConnected: walletConnected } = useAccount();
   const network = useNetwork();
   const {
     settle,
@@ -43,6 +43,10 @@ export function SettlementPanel({
     legProgress,
     reset,
   } = useSettlement();
+  const { enabled: accountEnabled } = useCinchAccount();
+  // Either signer satisfies "ready to settle": the connected wallet, or the
+  // self-custodial Cinch account.
+  const isConnected = walletConnected || accountEnabled;
   const [confirmation, setConfirmation] = useState<ChainConfirmation | null>(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -358,7 +362,7 @@ export function SettlementPanel({
           </button>
           {!isConnected ? (
             <p className="faint" style={{ fontSize: "0.82rem", marginTop: 10, textAlign: "center" }}>
-              Connect a wallet to settle. Previewing needs nothing.
+              Connect a wallet or switch on your Cinch account to settle. Previewing needs nothing.
             </p>
           ) : null}
           {error ? <p style={{ color: "var(--rose-400)", marginTop: 12, fontSize: "0.88rem" }}>{error}</p> : null}

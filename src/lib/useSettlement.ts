@@ -23,12 +23,26 @@
  */
 
 import { useCallback, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useSendTransaction, useSendCalls, useSwitchChain, useChainId } from "wagmi";
 import type { TempoCall } from "./batch";
 import { useNetwork } from "./useNetwork";
 import { tempoModeratoChain, tempoMainnetChain } from "./wagmi";
+import {
+  accountSettle,
+  accountOn,
+  storedKey,
+  subscribeAccount,
+} from "./cinchAccount";
 
 export type SettleStatus = "idle" | "switching" | "signing" | "sent" | "error";
+
+/** Live state of the self-custodial Cinch account. */
+export function useCinchAccount() {
+  const key = useSyncExternalStore(subscribeAccount, storedKey, () => null);
+  const on = useSyncExternalStore(subscribeAccount, accountOn, () => false);
+  return { key, enabled: on && !!key, hasKey: !!key };
+}
 
 /** Progress of a leg-by-leg (non-atomic) settlement. */
 export interface LegProgress {
@@ -43,6 +57,7 @@ export function useSettlement() {
   const { switchChainAsync } = useSwitchChain();
   const { sendTransactionAsync } = useSendTransaction();
   const { sendCallsAsync } = useSendCalls();
+  const { key: accountKey, enabled: accountEnabled } = useCinchAccount();
 
   const [status, setStatus] = useState<SettleStatus>("idle");
   const [txRef, setTxRef] = useState<string>("");
@@ -78,6 +93,25 @@ export function useSettlement() {
       }
       setError(null);
       setBatchUnsupported(false);
+
+      // Preferred of the preferred: the self-custodial Cinch account signs a
+      // real atomic 0x76 batch with the fee sponsored — no chain switch, no
+      // wallet popup, no EIP-5792 support needed.
+      if (accountEnabled && accountKey) {
+        setStatus("signing");
+        try {
+          const ref = await accountSettle(network, accountKey, calls);
+          setTxRef(ref);
+          setTxRefs(ref ? [ref] : []);
+          setStatus("sent");
+          return ref;
+        } catch (err) {
+          setError(explainError(err, network.name));
+          setStatus("error");
+          return null;
+        }
+      }
+
       if (!(await ensureChain())) return null;
 
       setStatus("signing");
@@ -117,7 +151,7 @@ export function useSettlement() {
         return null;
       }
     },
-    [ensureChain, targetChain.id, network.name, sendTransactionAsync, sendCallsAsync]
+    [ensureChain, targetChain.id, network, accountEnabled, accountKey, sendTransactionAsync, sendCallsAsync]
   );
 
   /**

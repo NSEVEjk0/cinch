@@ -18,6 +18,8 @@ export interface TempoNetwork {
   rpcUrl: string;
   wsUrl: string;
   explorerUrl: string;
+  /** Public faucet URL (testnet only). */
+  faucetUrl?: string;
   /** Faucet-funded stablecoins available on this network. */
   tokens: Token[];
 }
@@ -74,6 +76,7 @@ export const MODERATO: TempoNetwork = {
   rpcUrl: "https://rpc.moderato.tempo.xyz",
   wsUrl: "wss://rpc.moderato.tempo.xyz",
   explorerUrl: "https://explore.testnet.tempo.xyz",
+  faucetUrl: "https://faucet.tempo.xyz",
   tokens: TESTNET_TOKENS,
 };
 

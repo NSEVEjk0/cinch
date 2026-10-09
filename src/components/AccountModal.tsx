@@ -9,7 +9,8 @@
  * server — the account lives in this browser and is recovered from the phrase.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   createAccount,
   importMnemonic,
@@ -28,6 +29,10 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [savedConfirmed, setSavedConfirmed] = useState(false);
   const [copied, setCopied] = useState<"phrase" | "key" | null>(null);
+  // Portal to <body> so the fixed backdrop centers on the viewport rather than
+  // being trapped inside the header's backdrop-filter containing block.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   function doCreate() {
     setError(null);
@@ -59,7 +64,9 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="modal-backdrop" onClick={mode === "created" ? undefined : onClose}>
       <div
         className="modal card"
@@ -116,7 +123,8 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
           />
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

@@ -7,7 +7,7 @@ export const BRAND = {
   name: "Cinch",
   tagline: "Net it out. Settle the whole circle in one move.",
   oneLiner:
-    "Cinch is a multilateral netting clearinghouse on Tempo. Drop in who owes whom, and it collapses a tangle of debts into the fewest possible transfers — then settles the entire cleared circle in a single atomic transaction.",
+    "Cinch is a multilateral netting clearinghouse on Tempo. When a group owes each other back and forth, it accumulates who owes whom, nets the whole tangle down to the fewest possible transfers, and settles the entire cleared circle in a single atomic transaction — all at once, or not at all.",
   canonicalUrl: "https://cinch.vercel.app",
   xUrl: "https://x.com/CRYPTFRANI",
   repoUrl: "https://github.com/NSEVEjk0/cinch",

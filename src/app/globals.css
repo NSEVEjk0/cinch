@@ -11,40 +11,40 @@
 /* ------------------------------- tokens ---------------------------------- */
 
 :root {
-  /* Neutrals — a deep indigo-tinted ink ramp (richer than pure grey). */
-  --bg: #0a0a16;
-  --bg-raised: #10101f;
-  --surface: #15152a;
-  --surface-2: #1c1c38;
-  --surface-3: #262648;
-  --hairline: rgba(173, 170, 255, 0.1);
-  --hairline-2: rgba(173, 170, 255, 0.18);
+  /* Neutrals — warm cream / white ramp (Stripe-bright, light). */
+  --bg: #fbf8f3;
+  --bg-raised: #fffdfa;
+  --surface: #ffffff;
+  --surface-2: #f7f1e8;
+  --surface-3: #efe6d8;
+  --hairline: rgba(74, 54, 34, 0.1);
+  --hairline-2: rgba(74, 54, 34, 0.18);
 
-  /* Text ramp — cool white with a faint lilac tint. */
-  --text: #f4f3ff;
-  --text-2: #b9b7d8;
-  --text-3: #817fa6;
-  --text-4: #565478;
+  /* Text ramp — espresso brown-black on cream. */
+  --text: #241a12;
+  --text-2: #5d4e40;
+  --text-3: #8a7a68;
+  --text-4: #b4a390;
 
-  /* Accent — electric iris/indigo, bright and confident. */
-  --accent: #8b7bff;
-  --accent-2: #6d5cff;
-  --accent-ink: #0b0820;
-  --accent-glow: rgba(139, 123, 255, 0.2);
-  --accent-line: rgba(139, 123, 255, 0.4);
+  /* Accent — a rich warm caramel/clay brown. */
+  --accent: #a9693a;
+  --accent-2: #8f5329;
+  --accent-ink: #fffdf9;
+  --accent-glow: rgba(169, 105, 58, 0.14);
+  --accent-line: rgba(169, 105, 58, 0.32);
 
-  /* Vivid spectrum — used across the mesh, the diagram and categorical bits. */
-  --iris: #8b7bff;
-  --violet: #b06bff;
-  --pink: #ff6bc4;
-  --cyan: #3dd7ff;
-  --lime: #6fe79b;
-  --amber: #ffc14d;
+  /* Warm spectrum — mesh, diagram, categorical bits. */
+  --iris: #a9693a;
+  --violet: #c67b3e;
+  --pink: #e08a5a;
+  --cyan: #d9a441;
+  --lime: #7a9a4e;
+  --amber: #e0a53f;
 
-  /* Semantic — bright but legible. */
-  --pos: #3ee0a0;
-  --neg: #ff7a9c;
-  --warn: #ffc14d;
+  /* Semantic — tuned for a light surface. */
+  --pos: #1f9d63;
+  --neg: #cf4b52;
+  --warn: #b7791f;
 
   /* Radii — tighter than before (Linear). */
   --r-xs: 7px;
@@ -53,10 +53,10 @@
   --r-lg: 20px;
   --r-xl: 28px;
 
-  /* Shadows — soft, layered, low-contrast. */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 8px 24px -12px rgba(0, 0, 0, 0.7), 0 2px 6px -2px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 24px 60px -24px rgba(0, 0, 0, 0.85);
+  /* Shadows — warm, soft, light-theme (Stripe/Mercury). */
+  --shadow-sm: 0 1px 2px rgba(74, 54, 34, 0.08);
+  --shadow-md: 0 10px 30px -14px rgba(74, 54, 34, 0.28), 0 2px 6px -2px rgba(74, 54, 34, 0.1);
+  --shadow-lg: 0 30px 70px -28px rgba(74, 54, 34, 0.3);
   --ring: 0 0 0 1px var(--hairline) inset;
 
   /* Type. */
@@ -163,7 +163,7 @@ button {
   font-feature-settings: "ss01" 1, "cv05" 1;
 }
 h1.display {
-  background: linear-gradient(104deg, #ffffff 0%, #d9d2ff 42%, var(--iris) 72%, var(--pink) 100%);
+  background: linear-gradient(104deg, var(--text) 0%, var(--accent) 60%, var(--pink) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -229,20 +229,20 @@ h1.display {
   background: linear-gradient(180deg, var(--accent) 0%, var(--accent-2) 100%);
   color: var(--accent-ink);
   font-weight: 560;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 6px 20px -8px var(--accent-glow);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 8px 22px -10px rgba(169, 105, 58, 0.6);
 }
 .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 10px 28px -8px var(--accent-glow);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 12px 30px -10px rgba(169, 105, 58, 0.7);
   transform: translateY(-0.5px);
 }
 .btn-ghost {
-  background: var(--surface-2);
+  background: var(--surface);
   border-color: var(--hairline-2);
   color: var(--text);
 }
 .btn-ghost:hover:not(:disabled) {
-  background: var(--surface-3);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--surface-2);
+  border-color: var(--hairline-2);
 }
 .btn-quiet {
   background: transparent;
@@ -391,21 +391,21 @@ h1.display {
   position: absolute;
   border-radius: 50%;
   filter: blur(90px);
-  opacity: 0.55;
+  opacity: 0.7;
 }
 .mesh::before {
   width: 640px;
   height: 640px;
   top: -230px;
   right: -140px;
-  background: radial-gradient(circle, rgba(176, 107, 255, 0.5), transparent 62%);
+  background: radial-gradient(circle, rgba(224, 138, 90, 0.55), transparent 62%);
 }
 .mesh::after {
   width: 600px;
   height: 600px;
   top: -120px;
   left: -180px;
-  background: radial-gradient(circle, rgba(61, 215, 255, 0.4), transparent 60%);
+  background: radial-gradient(circle, rgba(217, 164, 65, 0.5), transparent 60%);
 }
 /* a third warm bloom for a fuller spectrum */
 .mesh > .bloom {
@@ -414,10 +414,10 @@ h1.display {
   height: 520px;
   border-radius: 50%;
   filter: blur(100px);
-  opacity: 0.4;
+  opacity: 0.55;
   bottom: -260px;
   left: 38%;
-  background: radial-gradient(circle, rgba(255, 107, 196, 0.45), transparent 62%);
+  background: radial-gradient(circle, rgba(198, 123, 62, 0.5), transparent 62%);
 }
 
 /* fine dotted grid overlay, very subtle (Linear/Aztec texture) */
@@ -426,7 +426,7 @@ h1.display {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(circle at 1px 1px, rgba(180, 170, 255, 0.07) 1px, transparent 0);
+  background-image: radial-gradient(circle at 1px 1px, rgba(74, 54, 34, 0.08) 1px, transparent 0);
   background-size: 34px 34px;
   mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);

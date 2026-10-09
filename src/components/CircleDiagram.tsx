@@ -70,8 +70,8 @@ export function CircleDiagram({
     >
       <defs>
         <linearGradient id="edgeNet" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#b06bff" />
-          <stop offset="1" stopColor="#3dd7ff" />
+          <stop offset="0" stopColor="#c67b3e" />
+          <stop offset="1" stopColor="#a9693a" />
         </linearGradient>
         <marker
           id="arrowNet"
@@ -82,7 +82,7 @@ export function CircleDiagram({
           markerHeight="6"
           orient="auto-start-reverse"
         >
-          <path d="M0 0 L10 5 L0 10 z" fill="#8b7bff" />
+          <path d="M0 0 L10 5 L0 10 z" fill="#a9693a" />
         </marker>
         <marker
           id="arrowGross"
@@ -93,12 +93,12 @@ export function CircleDiagram({
           markerHeight="5"
           orient="auto-start-reverse"
         >
-          <path d="M0 0 L10 5 L0 10 z" fill="rgba(185,183,216,0.5)" />
+          <path d="M0 0 L10 5 L0 10 z" fill="rgba(138,122,104,0.55)" />
         </marker>
       </defs>
 
       {/* guide ring */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(173,170,255,0.12)" strokeWidth={1} />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(74,54,34,0.12)" strokeWidth={1} />
 
       {/* edges */}
       <g>
@@ -113,11 +113,11 @@ export function CircleDiagram({
               key={i}
               d={path}
               fill="none"
-              stroke={isNet ? "url(#edgeNet)" : "rgba(185,183,216,0.26)"}
+              stroke={isNet ? "url(#edgeNet)" : "rgba(138,122,104,0.3)"}
               strokeWidth={isNet ? 2.4 : 1.1}
               markerEnd={isNet ? "url(#arrowNet)" : "url(#arrowGross)"}
               style={{
-                filter: isNet ? "drop-shadow(0 0 6px rgba(139,123,255,0.5))" : "none",
+                filter: isNet ? "drop-shadow(0 0 5px rgba(169,105,58,0.4))" : "none",
                 animation: `edge-draw 0.6s ease ${i * 0.05}s both`,
               }}
             />
@@ -129,8 +129,8 @@ export function CircleDiagram({
       <g>
         {nodes.map((n, i) => (
           <g key={n.address} style={{ animation: `fade-in 0.4s ease ${i * 0.04}s both` }}>
-            <circle cx={n.x} cy={n.y} r={7} fill="#15152a" stroke="#8b7bff" strokeWidth={1.6} />
-            <circle cx={n.x} cy={n.y} r={2.6} fill="#b06bff" />
+            <circle cx={n.x} cy={n.y} r={7} fill="#ffffff" stroke="#a9693a" strokeWidth={1.6} />
+            <circle cx={n.x} cy={n.y} r={2.6} fill="#c67b3e" />
             <text
               x={labelX(n, cx)}
               y={n.y}
@@ -138,7 +138,7 @@ export function CircleDiagram({
               textAnchor={n.x < cx - 4 ? "end" : n.x > cx + 4 ? "start" : "middle"}
               fontFamily="var(--font-mono)"
               fontSize={12.5}
-              fill="#b9b7d8"
+              fill="#5d4e40"
             >
               {n.name}
             </text>

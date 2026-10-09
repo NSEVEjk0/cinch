@@ -139,13 +139,17 @@ function ConnectModal({
   onConnect: (c: import("wagmi").Connector) => void;
   onClose: () => void;
 }) {
-  // De-duplicate connectors by name (wagmi can list the same wallet twice).
+  // With EIP-6963 each installed wallet is its own connector. De-duplicate by
+  // name, and hide the generic "Injected" fallback when at least one real
+  // named wallet was discovered (otherwise keep it so there's always an option).
   const seen = new Set<string>();
-  const unique = connectors.filter((c) => {
+  const deduped = connectors.filter((c) => {
     if (seen.has(c.name)) return false;
     seen.add(c.name);
     return true;
   });
+  const named = deduped.filter((c) => c.id !== "injected" && !/^injected$/i.test(c.name));
+  const unique = named.length > 0 ? named : deduped;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -166,8 +170,8 @@ function ConnectModal({
           {unique.length === 0 ? (
             <div className="card" style={{ padding: 16 }}>
               <p className="muted" style={{ margin: 0, fontSize: "0.92rem" }}>
-                No browser wallet detected. Install MetaMask, Rabby, or another injected wallet, then
-                reload this page.
+                No browser wallet detected. Install MetaMask, Rabby, Coinbase Wallet or another
+                browser wallet, then reload this page.
               </p>
             </div>
           ) : (
@@ -180,7 +184,12 @@ function ConnectModal({
                 disabled={isPending}
               >
                 <span className="row" style={{ gap: 10 }}>
-                  <WalletGlyph name={c.name} />
+                  {c.icon ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.icon} alt="" width={24} height={24} style={{ borderRadius: 6 }} />
+                  ) : (
+                    <WalletGlyph name={c.name} />
+                  )}
                   {c.name}
                 </span>
                 <span className="faint" style={{ fontSize: "0.8rem" }}>
@@ -198,8 +207,8 @@ function ConnectModal({
         ) : null}
 
         <p className="faint" style={{ fontSize: "0.78rem", marginTop: 18, marginBottom: 0 }}>
-          Cinch runs on Tempo. You can pick mainnet or testnet from the network switch beside this
-          button.
+          Don&apos;t see your wallet? Make sure its extension is unlocked, then reload. Cinch
+          supports any EIP-6963 browser wallet.
         </p>
       </div>
     </div>

@@ -1,9 +1,10 @@
 /**
  * wagmi + viem configuration for Tempo.
  *
- * Tempo is EVM-compatible, so a standard wagmi config with injected connectors
- * works for connecting a wallet and reading balances. The two Tempo chains are
- * declared from the verified connection details in `tempo.ts`.
+ * Tempo is EVM-compatible. We enable EIP-6963 multi-injected-provider
+ * discovery so every installed browser wallet (MetaMask, Rabby, Coinbase,
+ * Frame, …) is offered — not just whichever one claimed `window.ethereum`.
+ * This is what fixes "I switched browser and Rabby didn't show up".
  */
 
 import { http, createConfig, injected } from "wagmi";
@@ -32,7 +33,11 @@ export const tempoModeratoChain = toViemChain(MODERATO);
 
 export const wagmiConfig = createConfig({
   chains: [tempoModeratoChain, tempoMainnetChain],
-  connectors: [injected()],
+  // `multiInjectedProviderDiscovery` (EIP-6963) is on by default and surfaces
+  // each wallet as its own connector. We also add a generic injected()
+  // fallback for wallets that don't yet announce via 6963.
+  multiInjectedProviderDiscovery: true,
+  connectors: [injected({ shimDisconnect: true })],
   transports: {
     [tempoModeratoChain.id]: http(MODERATO.rpcUrl),
     [tempoMainnetChain.id]: http(MAINNET.rpcUrl),

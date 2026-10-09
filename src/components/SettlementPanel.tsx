@@ -194,6 +194,45 @@ export function SettlementPanel({
           </div>
         ) : null}
 
+        {/* Per-party settlement status: each leg, flagged from the chain. */}
+        {batch.length > 0 && result.transfers.length > 0 ? (
+          <div className="card" style={{ overflow: "hidden", marginTop: 16 }}>
+            <div className="card-pad" style={{ padding: "12px 16px", borderBottom: "1px solid var(--hairline)" }}>
+              <span className="label">Per-party status</span>
+            </div>
+            <div>
+              {result.transfers.map((t, i) => {
+                const settled = confirmation?.confirmed;
+                return (
+                  <div key={i} className="between" style={{ padding: "10px 16px", borderBottom: "1px solid var(--hairline)" }}>
+                    <span style={{ fontSize: "0.86rem" }}>
+                      {name(t.from)} <span className="faint">→</span> {name(t.to)}
+                    </span>
+                    <span className="row" style={{ gap: 10 }}>
+                      <span className="mono tnum" style={{ fontSize: "0.84rem" }}>{formatWithSymbol(t.amount, t.token)}</span>
+                      {settled ? (
+                        <span className="mono" style={{ fontSize: "0.74rem", color: "var(--pos)" }}>✓ settled</span>
+                      ) : confirming ? (
+                        <span className="mono faint" style={{ fontSize: "0.74rem" }}>confirming…</span>
+                      ) : (
+                        <span className="mono faint" style={{ fontSize: "0.74rem" }}>pending</span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            {txRef && /^0x[0-9a-fA-F]{64}$/.test(txRef) ? (
+              <p className="faint" style={{ fontSize: "0.74rem", padding: "10px 16px", margin: 0 }}>
+                All legs settled together in one atomic transaction —{" "}
+                <a href={explorerTxUrl(network, txRef)} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>
+                  view it on the explorer ↗
+                </a>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <div style={{ marginTop: 16 }}>
           {circle.cadence === "once" ? (
             <p className="faint" style={{ fontSize: "0.82rem", margin: 0 }}>

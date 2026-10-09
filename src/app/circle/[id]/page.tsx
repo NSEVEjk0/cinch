@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CircleDiagram } from "@/components/CircleDiagram";
@@ -27,6 +27,7 @@ import {
 } from "@/lib/circle";
 import { clearRoom } from "@/lib/netting";
 import { discountActive, isOverdue } from "@/lib/invoice";
+import { pushCircle, pullCircle, syncAvailable } from "@/lib/sync";
 import { openCertificate } from "@/lib/certificate";
 import { downloadExport } from "@/lib/accounting";
 import { useNetwork } from "@/lib/useNetwork";
@@ -41,6 +42,10 @@ export default function CirclePage() {
   const [circle, setCircle] = useState<Circle | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [view, setView] = useState<"gross" | "net">("gross");
+  const [liveSync, setLiveSync] = useState(false);
+  // Latest circle, for the polling interval to merge against without re-arming.
+  const circleRef = useRef<Circle | null>(null);
+  circleRef.current = circle;
 
   useEffect(() => {
     const c = loadCircle(id);
@@ -65,6 +70,41 @@ export default function CirclePage() {
     else setCircle(c);
   }, [id]);
 
+  // Live shared circles (optional): pull the server copy and merge, then poll
+  // so several people on the same link see one another's edits. Degrades to a
+  // no-op when sync isn't configured.
+  useEffect(() => {
+    let stop = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    async function syncOnce() {
+      const incoming = await pullCircle(id);
+      if (stop || !incoming) return;
+      const local = circleRef.current;
+      const merged = local ? mergeCircle(local, incoming) : incoming;
+      // Only commit if something actually changed, to avoid render churn.
+      if (!local || circleSignature(merged) !== circleSignature(local)) {
+        saveCircle(merged);
+        setCircle(merged);
+        if (notFound) setNotFound(false);
+      }
+    }
+
+    (async () => {
+      if (!(await syncAvailable())) return;
+      if (stop) return;
+      setLiveSync(true);
+      await syncOnce();
+      timer = setInterval(syncOnce, 6000);
+    })();
+
+    return () => {
+      stop = true;
+      if (timer) clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
   const result = useMemo(
     () => (circle ? clearRoom(circle.obligations, { mode: circle.nettingMode ?? "min-transfers" }) : null),
     [circle]
@@ -73,6 +113,8 @@ export default function CirclePage() {
   function persist(next: Circle) {
     setCircle(next);
     saveCircle(next);
+    // Keep the shared copy live for anyone else on this link (no-op if sync off).
+    if (liveSync) void pushCircle(next);
   }
 
   function changeToken(token: Circle["defaultToken"]) {
@@ -171,7 +213,7 @@ export default function CirclePage() {
             </div>
           </div>
           <div className="row wrap" style={{ gap: 10 }}>
-            <ShareButton circle={circle} />
+            <ShareButton circle={circle} liveSync={liveSync} />
             <TokenSwitch value={circle.defaultToken} onChange={changeToken} />
           </div>
         </div>
@@ -523,6 +565,19 @@ function partyNameShort(circle: Circle, address: string): string {
   return name.startsWith("0x") ? shortAddress(name) : name;
 }
 
+/** A cheap change signature for a circle (parties + obligations), for sync diffing. */
+function circleSignature(c: Circle): string {
+  const parties = c.parties
+    .map((p) => `${p.address.toLowerCase()}:${p.name}:${p.attestedAt ?? ""}`)
+    .sort()
+    .join("|");
+  const obs = c.obligations
+    .map((o) => `${o.id}:${o.debtor}:${o.creditor}:${o.amount}:${o.disputed ? 1 : 0}:${o.dueDate ?? ""}:${o.earlyPayDiscountBps ?? ""}`)
+    .sort()
+    .join("|");
+  return `${c.name}#${c.defaultToken.symbol}#${c.nettingMode ?? ""}#${parties}#${obs}`;
+}
+
 /** Inline invoice terms shown under an obligation: due date, discount, overdue. */
 function ObligationTerms({ o }: { o: Obligation }) {
   const due = o.dueDate ? new Date(o.dueDate.length === 10 ? `${o.dueDate}T00:00:00` : o.dueDate) : null;
@@ -545,14 +600,22 @@ function ObligationTerms({ o }: { o: Obligation }) {
   );
 }
 
-function ShareButton({ circle }: { circle: Circle }) {
+function ShareButton({ circle, liveSync }: { circle: Circle; liveSync: boolean }) {
   const [copied, setCopied] = useState(false);
   async function share() {
     if (typeof window === "undefined") return;
-    // Pack the circle's state into the link so whoever opens it joins the same
-    // room and can add their own obligations — no server involved.
-    const encoded = encodeCircle(circle);
-    const url = `${window.location.origin}${window.location.pathname}#c=${encodeURIComponent(encoded)}`;
+    let url: string;
+    if (liveSync) {
+      // Live sync is on: push the current state and share a clean link. Whoever
+      // opens it pulls the room from the server and sees edits as they happen.
+      await pushCircle(circle);
+      url = `${window.location.origin}${window.location.pathname}`;
+    } else {
+      // No server: pack the circle's state into the link so whoever opens it
+      // joins the same room and can add their own obligations.
+      const encoded = encodeCircle(circle);
+      url = `${window.location.origin}${window.location.pathname}#c=${encodeURIComponent(encoded)}`;
+    }
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -562,8 +625,12 @@ function ShareButton({ circle }: { circle: Circle }) {
     }
   }
   return (
-    <button className="btn btn-ghost btn-sm" onClick={share} title="Copy a shareable link that carries this circle">
-      {copied ? "Link copied ✓" : "Share circle"}
+    <button
+      className="btn btn-ghost btn-sm"
+      onClick={share}
+      title={liveSync ? "Copy a live link — everyone sees the same room update" : "Copy a shareable link that carries this circle"}
+    >
+      {copied ? "Link copied ✓" : liveSync ? "Share live link" : "Share circle"}
     </button>
   );
 }

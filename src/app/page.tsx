@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { HeroDemo } from "@/components/HeroDemo";
-import { PROBLEM, HOW, FEATURES, WHY_TEMPO, FAQ } from "@/lib/brand";
+import { PROBLEM, SOLUTION, HOW, FEATURES, WHY_TEMPO, FAQ } from "@/lib/brand";
 
 export default function HomePage() {
   return (
@@ -68,6 +68,19 @@ export default function HomePage() {
             {PROBLEM.heading}
           </h2>
           <p className="lead" style={{ marginTop: 22 }}>{PROBLEM.body}</p>
+        </div>
+      </section>
+
+      {/* ------------------------------ solution ---------------------------- */}
+      <section className="shell section" style={{ paddingTop: 0 }}>
+        <div style={{ maxWidth: 720 }}>
+          <p className="eyebrow" style={{ marginBottom: 20, color: "var(--pos)" }}>
+            The solution
+          </p>
+          <h2 className="display" style={{ fontSize: "clamp(1.9rem, 4vw, 2.9rem)" }}>
+            {SOLUTION.heading}
+          </h2>
+          <p className="lead" style={{ marginTop: 22 }}>{SOLUTION.body}</p>
         </div>
       </section>
 

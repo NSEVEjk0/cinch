@@ -69,6 +69,14 @@ export const FEATURES = [
     body: "Every clearing is kept in the circle's history with the terms and the on-chain proof, and exports as a printable certificate — so a settlement is also a record you can file.",
   },
   {
+    title: "Invoices, not just IOUs",
+    body: "Give an obligation a due date and an early-pay discount, and the discount applies automatically when a standing circle clears inside the window. Overdue items are flagged; the terms travel into the settlement.",
+  },
+  {
+    title: "Splits and payroll in one move",
+    body: "Compile a Splitwise-style shared expense or a one-to-many payroll run straight into a circle. A payroll run settles as a single sponsored atomic transaction, so recipients are paid together and touch zero gas.",
+  },
+  {
     title: "Clear by API too",
     body: "The same netting engine answers programs at POST /api/clear: submit obligations and get back the minimal settlement, so backends and automated systems can net and settle without a browser.",
   },
@@ -97,6 +105,10 @@ export const WHY_TEMPO = [
     use: "Obligations in different stablecoins net against one another inside a single settlement.",
   },
   {
+    primitive: "Time-locked execution (validAfter)",
+    use: "A circle can be signed now and clear itself later — scheduled netting without anyone back to press the button.",
+  },
+  {
     primitive: "Sub-second finality",
     use: "A cleared circle is final in about half a second, so settling is something you do, not wait for.",
   },
@@ -105,7 +117,7 @@ export const WHY_TEMPO = [
 export const FAQ = [
   {
     q: "Who holds the money?",
-    a: "No one. Cinch never takes custody. It computes the settlement and hands your wallet a single transaction to sign; the money moves party-to-party on Tempo, or not at all.",
+    a: "No one. Cinch never takes custody. It computes the settlement and your self-custodial Cinch account signs a single transaction; the money moves party-to-party on Tempo, or not at all.",
   },
   {
     q: "What if the circle doesn't perfectly cancel?",
@@ -121,7 +133,7 @@ export const FAQ = [
   },
   {
     q: "Is anything stored on a server?",
-    a: "A circle lives in your browser and is shared by link. The only durable record of a settlement is the Tempo chain itself, which is the point: the ledger is public, verifiable, and nobody's to lose.",
+    a: "No. A circle lives in your browser and is shared by link, and your account is a self-custodial key you recover from a phrase — never held on a server. The only durable record of a settlement is the Tempo chain itself: public, verifiable, and nobody's to lose.",
   },
   {
     q: "Does it run on mainnet?",

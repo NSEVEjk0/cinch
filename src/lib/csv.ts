@@ -29,7 +29,7 @@ export interface ImportResult {
 const HEADER_WORDS = ["debtor", "creditor", "payer", "payee", "from", "to", "amount", "reason"];
 
 /** Deterministically derive a party address from a typed name (demo-friendly). */
-function addressForName(name: string): `0x${string}` {
+export function addressForName(name: string): `0x${string}` {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
   const hex = h.toString(16).padStart(8, "0");

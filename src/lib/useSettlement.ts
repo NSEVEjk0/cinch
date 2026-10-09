@@ -30,18 +30,19 @@ import { useNetwork } from "./useNetwork";
 import { tempoModeratoChain, tempoMainnetChain } from "./wagmi";
 import {
   accountSettle,
-  accountOn,
   storedKey,
+  addressForKey,
   subscribeAccount,
 } from "./cinchAccount";
 
 export type SettleStatus = "idle" | "switching" | "signing" | "sent" | "error";
 
-/** Live state of the self-custodial Cinch account. */
+/** Live state of the self-custodial Cinch account (now the primary identity). */
 export function useCinchAccount() {
   const key = useSyncExternalStore(subscribeAccount, storedKey, () => null);
-  const on = useSyncExternalStore(subscribeAccount, accountOn, () => false);
-  return { key, enabled: on && !!key, hasKey: !!key };
+  // The Cinch account is the wallet: whenever a key exists it is the signer.
+  const address = key ? addressForKey(key) : null;
+  return { key, address, enabled: !!key, hasKey: !!key };
 }
 
 /** Progress of a leg-by-leg (non-atomic) settlement. */
@@ -85,7 +86,10 @@ export function useSettlement() {
 
   /** The preferred path: settle the whole circle atomically in one signature. */
   const settle = useCallback(
-    async (calls: TempoCall[]): Promise<string | null> => {
+    async (
+      calls: TempoCall[],
+      schedule?: { validAfter?: number; validBefore?: number }
+    ): Promise<string | null> => {
       if (calls.length === 0) {
         setStatus("sent");
         setTxRef("");
@@ -96,11 +100,12 @@ export function useSettlement() {
 
       // Preferred of the preferred: the self-custodial Cinch account signs a
       // real atomic 0x76 batch with the fee sponsored — no chain switch, no
-      // wallet popup, no EIP-5792 support needed.
+      // wallet popup, no EIP-5792 support needed. It also carries the
+      // `validAfter` time-lock for scheduled clearing.
       if (accountEnabled && accountKey) {
         setStatus("signing");
         try {
-          const ref = await accountSettle(network, accountKey, calls);
+          const ref = await accountSettle(network, accountKey, calls, schedule);
           setTxRef(ref);
           setTxRefs(ref ? [ref] : []);
           setStatus("sent");

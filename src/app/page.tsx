@@ -36,7 +36,7 @@ export default function HomePage() {
                 </Link>
               </div>
               <p className="faint" style={{ marginTop: 20, fontSize: "0.85rem" }}>
-                No account. Your wallet is your identity.
+                Cinch is its own self-custodial wallet. Create an account in seconds — no extension to install.
               </p>
             </div>
 

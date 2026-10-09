@@ -25,6 +25,7 @@ import type {
   SettlementTransfer,
   Token,
 } from "./types";
+import { applyInvoicePricing } from "./invoice";
 
 const abs = (v: bigint): bigint => (v < 0n ? -v : v);
 
@@ -182,11 +183,16 @@ function cmpAddr(a: string, b: string): number {
  */
 export function clearRoom(
   obligations: Obligation[],
-  options: { balances?: Balance[]; mode?: NettingMode } = {}
+  options: { balances?: Balance[]; mode?: NettingMode; asOf?: Date } = {}
 ): ClearingResult {
   const mode = options.mode ?? "min-transfers";
   const disputed = obligations.filter((o) => o.disputed);
-  let included = obligations.filter((o) => !o.disputed);
+  // Price each obligation for this moment: an early-pay discount still inside
+  // its window reduces what is actually owed, so the engine nets real amounts.
+  let included = applyInvoicePricing(
+    obligations.filter((o) => !o.disputed),
+    options.asOf ?? new Date()
+  );
   const excluded: Obligation[] = [...disputed];
 
   if (options.balances && options.balances.length > 0) {

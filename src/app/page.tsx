@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { HeroDemo } from "@/components/HeroDemo";
-import { PROBLEM, SOLUTION, HOW, FEATURES, WHY_TEMPO, FAQ } from "@/lib/brand";
+import { PROBLEM, SOLUTION, HOW, FEATURES, USE_CASES, WHY_TEMPO, FAQ } from "@/lib/brand";
 
 export default function HomePage() {
   return (
@@ -121,6 +121,34 @@ export default function HomePage() {
               </h3>
               <p className="muted" style={{ fontSize: "0.9rem", lineHeight: 1.62, margin: 0 }}>
                 {f.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ---------------------------- use cases ----------------------------- */}
+      <section className="shell section" style={{ paddingTop: 0 }}>
+        <div style={{ marginBottom: 40, maxWidth: 620 }}>
+          <p className="eyebrow" style={{ marginBottom: 18 }}>
+            Where it clears
+          </p>
+          <h2 className="display" style={{ fontSize: "clamp(1.8rem, 3.6vw, 2.5rem)" }}>
+            Anywhere money loops back on itself.
+          </h2>
+          <p className="muted" style={{ fontSize: "1rem", lineHeight: 1.62, marginTop: 16 }}>
+            Netting is a treasury primitive banks have run for decades as clearing. Cinch brings it
+            on-chain and atomic — so it works for a group chat and a back office alike.
+          </p>
+        </div>
+        <div className="g3 stagger">
+          {USE_CASES.map((u) => (
+            <div key={u.title} className="feature-card">
+              <h3 className="display" style={{ fontSize: "1.12rem", marginBottom: 11, letterSpacing: "-0.02em" }}>
+                {u.title}
+              </h3>
+              <p className="muted" style={{ fontSize: "0.9rem", lineHeight: 1.62, margin: 0 }}>
+                {u.body}
               </p>
             </div>
           ))}

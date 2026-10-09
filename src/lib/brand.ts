@@ -8,7 +8,7 @@ export const BRAND = {
   tagline: "Net it out. Settle the whole circle in one move.",
   oneLiner:
     "Cinch is a multilateral netting clearinghouse on Tempo. When a group owes each other back and forth, it accumulates who owes whom, nets the whole tangle down to the fewest possible transfers, and settles the entire cleared circle in a single atomic transaction — all at once, or not at all.",
-  canonicalUrl: "https://cinch.vercel.app",
+  canonicalUrl: "https://cinch-tau.vercel.app",
   xUrl: "https://x.com/CRYPTFRANI",
   repoUrl: "https://github.com/NSEVEjk0/cinch",
 } as const;
@@ -85,6 +85,34 @@ export const FEATURES = [
   {
     title: "Clear by API too",
     body: "The same netting engine answers programs at POST /api/clear: submit obligations and get back the minimal settlement, so backends and automated systems can net and settle without a browser.",
+  },
+] as const;
+
+/** Where Cinch clears — the market, made concrete for anyone sizing it up. */
+export const USE_CASES = [
+  {
+    title: "DAOs & contributor payouts",
+    body: "Grants, bounties, and reimbursements loop between a treasury and its contributors all month. A standing circle nets them into one clearing instead of a hundred separate transfers.",
+  },
+  {
+    title: "Marketplaces & platforms",
+    body: "Platform fees run one way, seller payouts the other. Cinch nets them so money moves once at its true net, not gross in both directions.",
+  },
+  {
+    title: "Supplier & vendor chains",
+    body: "Businesses that both buy from and sell to each other carry offsetting invoices. Clear the net balance in a single settlement rather than paying every invoice gross.",
+  },
+  {
+    title: "Payroll & teams",
+    body: "A one-to-many run compiles straight into a circle and settles as a single sponsored atomic transaction — everyone paid together, touching zero gas.",
+  },
+  {
+    title: "Funds & back offices",
+    body: "Inter-entity obligations net on a cadence and settle with an on-chain certificate attached, so the books reconcile straight from Tempo.",
+  },
+  {
+    title: "Groups & trips",
+    body: "The shared-expense case, finally finished: one netted settlement instead of a chain of IOUs and someone fronting the difference.",
   },
 ] as const;
 

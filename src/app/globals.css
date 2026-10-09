@@ -11,36 +11,40 @@
 /* ------------------------------- tokens ---------------------------------- */
 
 :root {
-  /* Neutrals — a cool, near-black ink ramp with true steps (Linear/Mercury). */
-  --bg: #07090d;
-  --bg-raised: #0c0f15;
-  --surface: #0f131a;
-  --surface-2: #141922;
-  --surface-3: #1a212c;
-  --hairline: rgba(255, 255, 255, 0.07);
-  --hairline-2: rgba(255, 255, 255, 0.12);
+  /* Neutrals — a deep indigo-tinted ink ramp (richer than pure grey). */
+  --bg: #0a0a16;
+  --bg-raised: #10101f;
+  --surface: #15152a;
+  --surface-2: #1c1c38;
+  --surface-3: #262648;
+  --hairline: rgba(173, 170, 255, 0.1);
+  --hairline-2: rgba(173, 170, 255, 0.18);
 
-  /* Text ramp. */
-  --text: #f2f5f8;
-  --text-2: #aeb9c7;
-  --text-3: #727e8d;
-  --text-4: #4b5563;
+  /* Text ramp — cool white with a faint lilac tint. */
+  --text: #f4f3ff;
+  --text-2: #b9b7d8;
+  --text-3: #817fa6;
+  --text-4: #565478;
 
-  /* Accent — a refined emerald, used sparingly like Stripe uses indigo. */
-  --accent: #2ee6a6;
-  --accent-2: #19c98c;
-  --accent-ink: #042016;
-  --accent-glow: rgba(46, 230, 166, 0.14);
-  --accent-line: rgba(46, 230, 166, 0.3);
+  /* Accent — electric iris/indigo, bright and confident. */
+  --accent: #8b7bff;
+  --accent-2: #6d5cff;
+  --accent-ink: #0b0820;
+  --accent-glow: rgba(139, 123, 255, 0.2);
+  --accent-line: rgba(139, 123, 255, 0.4);
 
-  /* A cool secondary for gradient mesh (never a UI accent). */
-  --violet: #6d7cff;
-  --cyan: #38d8ff;
+  /* Vivid spectrum — used across the mesh, the diagram and categorical bits. */
+  --iris: #8b7bff;
+  --violet: #b06bff;
+  --pink: #ff6bc4;
+  --cyan: #3dd7ff;
+  --lime: #6fe79b;
+  --amber: #ffc14d;
 
-  /* Semantic. */
-  --pos: #2ee6a6;
-  --neg: #ff8d7a;
-  --warn: #f1c15b;
+  /* Semantic — bright but legible. */
+  --pos: #3ee0a0;
+  --neg: #ff7a9c;
+  --warn: #ffc14d;
 
   /* Radii — tighter than before (Linear). */
   --r-xs: 7px;
@@ -159,7 +163,7 @@ button {
   font-feature-settings: "ss01" 1, "cv05" 1;
 }
 h1.display {
-  background: linear-gradient(180deg, #ffffff 0%, #c7d0dc 130%);
+  background: linear-gradient(104deg, #ffffff 0%, #d9d2ff 42%, var(--iris) 72%, var(--pink) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -387,21 +391,33 @@ h1.display {
   position: absolute;
   border-radius: 50%;
   filter: blur(90px);
-  opacity: 0.5;
+  opacity: 0.55;
 }
 .mesh::before {
-  width: 620px;
-  height: 620px;
-  top: -220px;
-  right: -120px;
-  background: radial-gradient(circle, rgba(46, 230, 166, 0.4), transparent 62%);
+  width: 640px;
+  height: 640px;
+  top: -230px;
+  right: -140px;
+  background: radial-gradient(circle, rgba(176, 107, 255, 0.5), transparent 62%);
 }
 .mesh::after {
-  width: 560px;
-  height: 560px;
-  top: -140px;
-  left: -160px;
-  background: radial-gradient(circle, rgba(109, 124, 255, 0.3), transparent 60%);
+  width: 600px;
+  height: 600px;
+  top: -120px;
+  left: -180px;
+  background: radial-gradient(circle, rgba(61, 215, 255, 0.4), transparent 60%);
+}
+/* a third warm bloom for a fuller spectrum */
+.mesh > .bloom {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.4;
+  bottom: -260px;
+  left: 38%;
+  background: radial-gradient(circle, rgba(255, 107, 196, 0.45), transparent 62%);
 }
 
 /* fine dotted grid overlay, very subtle (Linear/Aztec texture) */
@@ -410,7 +426,7 @@ h1.display {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.045) 1px, transparent 0);
+  background-image: radial-gradient(circle at 1px 1px, rgba(180, 170, 255, 0.07) 1px, transparent 0);
   background-size: 34px 34px;
   mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
@@ -550,7 +566,7 @@ h1.display {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent-line), transparent);
+  background: linear-gradient(90deg, transparent, var(--iris), var(--pink), transparent);
   opacity: 0;
   transition: opacity 0.25s var(--ease);
 }

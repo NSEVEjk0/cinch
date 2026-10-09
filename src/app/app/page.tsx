@@ -306,7 +306,7 @@ const rowCheck: React.CSSProperties = {
   height: 20,
   borderRadius: "50%",
   background: "linear-gradient(180deg, var(--mint-400), var(--mint-500))",
-  color: "#04120d",
+  color: "var(--accent-ink)",
   fontSize: "0.72rem",
   fontWeight: 700,
 };

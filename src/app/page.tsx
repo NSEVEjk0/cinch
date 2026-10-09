@@ -11,7 +11,7 @@ export default function HomePage() {
 
       {/* ------------------------------- hero ------------------------------- */}
       <section style={{ position: "relative", overflow: "hidden" }}>
-        <div className="mesh" />
+        <div className="mesh"><span className="bloom" /></div>
         <div className="grid-texture" />
         <div className="shell" style={{ position: "relative", zIndex: 1, paddingTop: 84, paddingBottom: 56 }}>
           <div className="split">
@@ -181,7 +181,7 @@ export default function HomePage() {
             background: "linear-gradient(180deg, var(--surface) 0%, var(--bg-raised) 100%)",
           }}
         >
-          <div className="mesh" style={{ opacity: 0.6 }} />
+          <div className="mesh" style={{ opacity: 0.7 }}><span className="bloom" /></div>
           <div style={{ position: "relative", zIndex: 1 }}>
             <h2 className="display" style={{ fontSize: "clamp(1.9rem, 4vw, 2.9rem)", maxWidth: "18ch", margin: "0 auto" }}>
               Stop paying gross.

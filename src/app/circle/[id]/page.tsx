@@ -644,7 +644,7 @@ function MiniToggle({
         padding: "5px 12px",
         borderRadius: 999,
         background: active ? "linear-gradient(180deg, var(--mint-400), var(--mint-500))" : "transparent",
-        color: active ? "#04120d" : "var(--text-soft)",
+        color: active ? "var(--accent-ink)" : "var(--text-soft)",
         fontWeight: active ? 600 : 500,
       }}
     >

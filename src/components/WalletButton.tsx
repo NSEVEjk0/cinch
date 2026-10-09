@@ -220,8 +220,8 @@ function WalletGlyph({ name }: { name: string }) {
         justifyContent: "center",
         fontSize: "0.82rem",
         fontWeight: 600,
-        color: "#04120d",
-        background: "linear-gradient(180deg, var(--mint-400), var(--mint-500))",
+        color: "var(--accent-ink)",
+        background: "linear-gradient(180deg, var(--accent), var(--accent-2))",
       }}
     >
       {letter}

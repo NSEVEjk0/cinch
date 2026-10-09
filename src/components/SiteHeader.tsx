@@ -14,42 +14,27 @@ const LINKS = [
 export function SiteHeader() {
   const pathname = usePathname();
   return (
-    <header
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 20,
-        backdropFilter: "blur(14px)",
-        background: "rgba(8,11,15,0.72)",
-        borderBottom: "1px solid var(--line)",
-      }}
-    >
-      <div
-        className="shell between"
-        style={{ height: 64 }}
-      >
-        <Link href="/" aria-label="Cinch home">
+    <header className="nav">
+      <div className="shell between" style={{ height: "100%" }}>
+        <Link href="/" aria-label="Cinch home" style={{ display: "flex" }}>
           <Logo />
         </Link>
 
-        <nav className="row" style={{ gap: 6 }}>
+        <nav className="row" style={{ gap: 4 }}>
           {LINKS.map((l) => {
             const active = pathname === l.href || pathname?.startsWith(l.href + "/");
             return (
               <Link
                 key={l.href}
                 href={l.href}
-                className="btn btn-quiet btn-sm nav-link-text"
-                style={{
-                  color: active ? "var(--text)" : "var(--text-soft)",
-                  fontWeight: active ? 540 : 500,
-                }}
+                className="nav-link nav-link-text"
+                data-active={active || undefined}
               >
                 {l.label}
               </Link>
             );
           })}
-          <span className="net-switch-wrap" style={{ marginLeft: 4 }}>
+          <span className="net-switch-wrap" style={{ margin: "0 6px" }}>
             <NetworkSwitch />
           </span>
           <WalletButton />

@@ -3,10 +3,9 @@
 /**
  * HeroDemo — the interactive centrepiece on the landing page.
  *
- * It loads a real scenario, runs it through the actual netting engine, and lets
+ * Loads a real scenario, runs it through the actual netting engine, and lets
  * the visitor flip between the tangle of obligations and the cleared
- * settlement, watching the stats (transfers, value moved, compression) change
- * live. No wallet, no typing — the pitch lands in one click.
+ * settlement, watching the stats change live. No wallet, no typing.
  */
 
 import { useMemo, useState } from "react";
@@ -29,115 +28,62 @@ export function HeroDemo() {
   const netted = result.stats.nettedByToken[symbol] ?? 0n;
 
   return (
-    <div className="card card-pad glow-ring" style={{ padding: 24 }}>
-      {/* scenario switcher */}
-      <div className="between wrap" style={{ gap: 12, marginBottom: 8 }}>
-        <div className="row" style={{ gap: 6 }}>
+    <div className="card" style={{ padding: 20, boxShadow: "var(--shadow-lg)" }}>
+      {/* window chrome — reads as a real product surface */}
+      <div className="between" style={{ marginBottom: 14 }}>
+        <div className="row" style={{ gap: 7 }}>
+          <span className="dot" style={{ background: "var(--text-4)", boxShadow: "none" }} />
+          <span className="label">Live preview</span>
+        </div>
+        <div className="segment">
           {SCENARIOS.map((s, i) => (
-            <button
-              key={s.id}
-              className="btn btn-quiet btn-sm"
-              onClick={() => setScenarioIdx(i)}
-              style={{
-                color: i === scenarioIdx ? "var(--mint-400)" : "var(--text-faint)",
-                background: i === scenarioIdx ? "var(--mint-glow)" : "transparent",
-                borderRadius: 999,
-                padding: "6px 12px",
-              }}
-            >
+            <button key={s.id} data-active={i === scenarioIdx} onClick={() => setScenarioIdx(i)}>
               {s.title.split(" ").slice(0, 2).join(" ")}
             </button>
           ))}
         </div>
       </div>
 
-      <p className="faint" style={{ margin: "0 0 14px", fontSize: "0.85rem", minHeight: 38 }}>
+      <p className="faint" style={{ margin: "0 0 10px", fontSize: "0.82rem", minHeight: 36, lineHeight: 1.5 }}>
         {scenario.blurb}
       </p>
 
       {/* diagram */}
       <div
         style={{
-          background: "radial-gradient(600px 300px at 50% 20%, rgba(79,227,176,0.05), transparent 70%)",
-          borderRadius: "var(--radius)",
-          padding: "8px 0",
+          background: "radial-gradient(540px 260px at 50% 15%, var(--accent-glow), transparent 70%)",
+          borderRadius: "var(--r-sm)",
+          padding: "6px 0",
         }}
       >
-        <div style={{ margin: "0 auto", maxWidth: 420 }}>
+        <div style={{ margin: "0 auto", maxWidth: 400 }}>
           <CircleDiagram
             parties={scenario.parties}
             obligations={obligations}
             transfers={result.transfers}
             mode={mode}
-            size={420}
+            size={400}
           />
         </div>
       </div>
 
       {/* toggle */}
-      <div
-        className="row"
-        style={{
-          gap: 4,
-          padding: 4,
-          borderRadius: 999,
-          border: "1px solid var(--line)",
-          width: "fit-content",
-          margin: "4px auto 20px",
-          background: "var(--ink-900)",
-        }}
-      >
-        <ToggleBtn active={mode === "gross"} onClick={() => setMode("gross")}>
+      <div className="segment" style={{ margin: "6px auto 18px", width: "fit-content" }}>
+        <button data-active={mode === "gross"} onClick={() => setMode("gross")}>
           {obligations.length} obligations
-        </ToggleBtn>
-        <ToggleBtn active={mode === "net"} onClick={() => setMode("net")}>
+        </button>
+        <button data-active={mode === "net"} onClick={() => setMode("net")}>
           {result.transfers.length} transfers
-        </ToggleBtn>
+        </button>
       </div>
 
       {/* live stats */}
-      <div className="grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: "var(--line)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-        <Stat label="Gross owed" value={`${formatAmount(gross, decimals)}`} unit={symbol} />
-        <Stat
-          label="Actually moves"
-          value={`${formatAmount(netted, decimals)}`}
-          unit={symbol}
-          highlight
-        />
+      <div className="grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: "var(--hairline)", borderRadius: "var(--r-sm)", overflow: "hidden" }}>
+        <Stat label="Gross owed" value={formatAmount(gross, decimals)} unit={symbol} />
+        <Stat label="Actually moves" value={formatAmount(netted, decimals)} unit={symbol} highlight />
         <Stat label="Compressed" value={formatPercent(result.stats.compressionRatio)} unit="less to send" />
       </div>
     </div>
-  );
-}
-
-function ToggleBtn({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="mono"
-      style={{
-        border: 0,
-        cursor: "pointer",
-        fontSize: "0.8rem",
-        letterSpacing: "0.02em",
-        padding: "8px 16px",
-        borderRadius: 999,
-        background: active ? "linear-gradient(180deg, var(--mint-400), var(--mint-500))" : "transparent",
-        color: active ? "#04120d" : "var(--text-soft)",
-        fontWeight: active ? 600 : 500,
-        transition: "all 0.2s ease",
-      }}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -153,22 +99,23 @@ function Stat({
   highlight?: boolean;
 }) {
   return (
-    <div style={{ background: "var(--ink-850)", padding: "16px 18px" }}>
+    <div style={{ background: "var(--bg-raised)", padding: "15px 16px" }}>
       <div className="label" style={{ marginBottom: 8 }}>
         {label}
       </div>
       <div
         className="mono tnum"
         style={{
-          fontSize: "1.35rem",
+          fontSize: "1.3rem",
           fontWeight: 500,
-          color: highlight ? "var(--mint-400)" : "var(--text)",
+          color: highlight ? "var(--accent)" : "var(--text)",
           lineHeight: 1.1,
+          transition: "color 0.2s var(--ease)",
         }}
       >
         {value}
       </div>
-      <div className="faint" style={{ fontSize: "0.72rem", marginTop: 3 }}>
+      <div className="faint" style={{ fontSize: "0.7rem", marginTop: 3 }}>
         {unit}
       </div>
     </div>

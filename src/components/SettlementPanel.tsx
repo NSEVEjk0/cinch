@@ -201,72 +201,83 @@ export function SettlementPanel({
   }
 
   return (
-    <div className="card card-pad">
-      <div className="between" style={{ marginBottom: 18 }}>
-        <span className="label">Cleared settlement</span>
-        <span className="chip chip-mint mono">{formatPercent(result.stats.compressionRatio)} compressed</span>
-      </div>
-
-      {/* headline */}
-      <div className="row" style={{ gap: 0, marginBottom: 20, alignItems: "baseline" }}>
-        <span className="mono tnum" style={{ fontSize: "2rem", fontWeight: 500 }}>
-          {formatAmount(result.stats.nettedByToken[symbol] ?? 0n, token.decimals)}
-        </span>
-        <span className="faint mono" style={{ fontSize: "1rem", marginLeft: 8 }}>
-          {symbol} moves
-        </span>
-        <span className="faint" style={{ marginLeft: 12, fontSize: "0.85rem" }}>
-          of {formatAmount(result.stats.grossByToken[symbol] ?? 0n, token.decimals)} owed
-        </span>
-      </div>
-
-      {/* transfers */}
-      {result.transfers.length > 0 ? (
-        <div className="stack" style={{ gap: 1, background: "var(--line)", borderRadius: "var(--radius-sm)", overflow: "hidden", marginBottom: 18 }}>
-          {result.transfers.map((t, i) => (
-            <div
-              key={i}
-              className="between"
-              style={{ background: "var(--ink-850)", padding: "12px 16px" }}
-            >
-              <span style={{ fontSize: "0.92rem" }}>
-                {name(t.from)} <span className="faint" style={{ margin: "0 6px" }}>pays</span> {name(t.to)}
-              </span>
-              <span className="mono tnum" style={{ color: "var(--mint-400)", fontSize: "0.95rem" }}>
-                {formatWithSymbol(t.amount, t.token)}
-              </span>
-            </div>
-          ))}
+    <div className="card" style={{ overflow: "hidden" }}>
+      <div className="between" style={{ padding: "18px 22px", borderBottom: "1px solid var(--hairline)" }}>
+        <div>
+          <span className="label">Cleared settlement</span>
+          <div className="row" style={{ gap: 8, marginTop: 7, alignItems: "baseline" }}>
+            <span className="mono tnum" style={{ fontSize: "1.7rem", fontWeight: 540, letterSpacing: "-0.02em" }}>
+              {formatAmount(result.stats.nettedByToken[symbol] ?? 0n, token.decimals)}
+            </span>
+            <span className="faint mono" style={{ fontSize: "0.9rem" }}>{symbol}</span>
+            <span className="faint" style={{ fontSize: "0.82rem" }}>
+              of {formatAmount(result.stats.grossByToken[symbol] ?? 0n, token.decimals)} owed
+            </span>
+          </div>
         </div>
+        <span className="chip chip-mint mono">{formatPercent(result.stats.compressionRatio)} ↓</span>
+      </div>
+
+      {/* transfers — Ramp-style review table */}
+      {result.transfers.length > 0 ? (
+        <table className="dtable">
+          <thead>
+            <tr>
+              <th>From</th>
+              <th>To</th>
+              <th>Reference</th>
+              <th style={{ textAlign: "right" }}>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.transfers.map((t, i) => (
+              <tr key={i}>
+                <td>{name(t.from)}</td>
+                <td>
+                  <span className="faint" style={{ marginRight: 6 }}>→</span>
+                  {name(t.to)}
+                </td>
+                <td className="faint" style={{ fontSize: "0.82rem" }}>
+                  {t.references.slice(0, 2).join(", ")}
+                  {t.references.length > 2 ? ` +${t.references.length - 2}` : ""}
+                </td>
+                <td className="num" style={{ color: "var(--accent)", fontWeight: 560 }}>
+                  {formatWithSymbol(t.amount, t.token)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       ) : (
-        <div className="card-pad" style={{ padding: 16, background: "var(--mint-glow)", borderRadius: "var(--radius-sm)", marginBottom: 18 }}>
-          <p className="mono" style={{ margin: 0, color: "var(--mint-400)", fontSize: "0.9rem" }}>
+        <div style={{ padding: "16px 22px", background: "var(--accent-glow)" }}>
+          <p className="mono" style={{ margin: 0, color: "var(--accent)", fontSize: "0.88rem" }}>
             The circle closes perfectly — nothing needs to move.
           </p>
         </div>
       )}
 
+      <div style={{ padding: "16px 22px" }}>
       {/* net positions, compact */}
-      <details style={{ marginBottom: 18 }}>
-        <summary className="faint" style={{ cursor: "pointer", fontSize: "0.85rem", userSelect: "none" }}>
+      <details style={{ marginBottom: 16 }}>
+        <summary className="faint" style={{ cursor: "pointer", fontSize: "0.84rem", userSelect: "none" }}>
           Net positions ({debtors.length} pay · {creditors.length} receive)
         </summary>
-        <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 14 }}>
+        <div className="g2" style={{ gap: 16, marginTop: 14 }}>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="label" style={{ color: "var(--rose-400)" }}>Pay in</span>
+            <span className="label" style={{ color: "var(--neg)" }}>Pay in</span>
             {debtors.map((p) => (
               <div key={p.party} className="between mono" style={{ fontSize: "0.84rem" }}>
                 <span>{name(p.party)}</span>
-                <span>{formatAmount(-p.net, token.decimals)}</span>
+                <span className="tnum">{formatAmount(-p.net, token.decimals)}</span>
               </div>
             ))}
           </div>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="label" style={{ color: "var(--mint-400)" }}>Receive</span>
+            <span className="label" style={{ color: "var(--accent)" }}>Receive</span>
             {creditors.map((p) => (
               <div key={p.party} className="between mono" style={{ fontSize: "0.84rem" }}>
                 <span>{name(p.party)}</span>
-                <span>{formatAmount(p.net, token.decimals)}</span>
+                <span className="tnum">{formatAmount(p.net, token.decimals)}</span>
               </div>
             ))}
           </div>
@@ -358,6 +369,7 @@ export function SettlementPanel({
           </p>
         </>
       )}
+      </div>
     </div>
   );
 }

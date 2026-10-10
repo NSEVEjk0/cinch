@@ -25,8 +25,8 @@
 
 import { Account, createClient, http as tempoHttp, withRelay } from "viem/tempo";
 import { tempo, tempoModerato } from "viem/chains";
-import { generateMnemonic, mnemonicToAccount, english } from "viem/accounts";
-import { toHex } from "viem";
+import { generateMnemonic, mnemonicToAccount, english, privateKeyToAccount } from "viem/accounts";
+import { toHex, createWalletClient, createPublicClient, http as viemHttp } from "viem";
 import type { TempoCall } from "./batch";
 import type { TempoNetwork } from "./tempo";
 import { resolveRefFromResult } from "./txref";
@@ -223,4 +223,128 @@ export async function accountBalance(
     args: [addressForKey(key)],
   });
   return bal as bigint;
+}
+
+/* ------------------------- Model C: multi-party clearing ------------------------- */
+
+/**
+ * Sign EIP-712 typed data with the account's key. Used for the two things a
+ * net debtor signs in a trustless clearing round — the EIP-2612 permit and the
+ * Authorization — neither of which touches the chain or costs gas.
+ */
+export async function signTypedDataWithKey(
+  key: Hex,
+  typedData: Parameters<ReturnType<typeof privateKeyToAccount>["signTypedData"]>[0]
+): Promise<Hex> {
+  const account = privateKeyToAccount(key);
+  return (await account.signTypedData(typedData)) as Hex;
+}
+
+/** The token-side context an EIP-2612 permit needs: domain name, version, owner nonce. */
+export interface PermitReadContext {
+  tokenName: string;
+  version: string;
+  nonce: bigint;
+}
+
+/**
+ * Read a token's EIP-2612 context for `owner`. Prefers EIP-5267 `eip712Domain()`
+ * for the exact name/version; falls back to `name()` + version "1".
+ */
+export async function readPermitContext(
+  network: TempoNetwork,
+  key: Hex,
+  token: Hex,
+  owner: Hex
+): Promise<PermitReadContext> {
+  const client = clientFor(network, key) as unknown as {
+    readContract: (args: unknown) => Promise<unknown>;
+  };
+
+  const nonce = (await client.readContract({
+    address: token,
+    abi: [
+      {
+        type: "function",
+        name: "nonces",
+        stateMutability: "view",
+        inputs: [{ name: "owner", type: "address" }],
+        outputs: [{ name: "", type: "uint256" }],
+      },
+    ],
+    functionName: "nonces",
+    args: [owner],
+  })) as bigint;
+
+  let tokenName = "";
+  let version = "1";
+  try {
+    const domain = (await client.readContract({
+      address: token,
+      abi: [
+        {
+          type: "function",
+          name: "eip712Domain",
+          stateMutability: "view",
+          inputs: [],
+          outputs: [
+            { name: "fields", type: "bytes1" },
+            { name: "name", type: "string" },
+            { name: "version", type: "string" },
+            { name: "chainId", type: "uint256" },
+            { name: "verifyingContract", type: "address" },
+            { name: "salt", type: "bytes32" },
+            { name: "extensions", type: "uint256[]" },
+          ],
+        },
+      ],
+      functionName: "eip712Domain",
+    })) as unknown[];
+    tokenName = String(domain[1]);
+    version = String(domain[2]) || "1";
+  } catch {
+    tokenName = (await client.readContract({
+      address: token,
+      abi: [
+        {
+          type: "function",
+          name: "name",
+          stateMutability: "view",
+          inputs: [],
+          outputs: [{ name: "", type: "string" }],
+        },
+      ],
+      functionName: "name",
+    })) as string;
+  }
+
+  return { tokenName, version, nonce };
+}
+
+/**
+ * Send a single arbitrary contract call from the account — used by the organiser
+ * to submit the atomic `clear()`.
+ *
+ * This goes out as a plain self-paid transaction (not the sponsored 0x76 relay
+ * path): the organiser pays the small fee, which Tempo cascades to pathUSD for a
+ * non-TIP-20 contract, so no gas token is held. The payers never send a
+ * transaction at all — they only signed — so the "nobody pays to play" property
+ * is preserved where it matters. Returns the transaction hash.
+ */
+export async function accountSendCall(
+  network: TempoNetwork,
+  key: Hex,
+  to: Hex,
+  data: Hex
+): Promise<string> {
+  const chain = chainForNetwork(network);
+  const account = privateKeyToAccount(key);
+  const wallet = createWalletClient({ account, chain, transport: viemHttp(network.rpcUrl) });
+  const pub = createPublicClient({ chain, transport: viemHttp(network.rpcUrl, { retryCount: 6, retryDelay: 400 }) });
+  const hash = await wallet.sendTransaction({ to, data } as never);
+  // Surface an on-chain revert as a thrown error, so callers don't record a
+  // settlement that didn't happen.
+  const receipt = await pub.waitForTransactionReceipt({ hash, timeout: 60_000 });
+  if (receipt.status !== "success") throw new Error("The clearing transaction reverted on-chain — nothing moved.");
+  return hash;
 }

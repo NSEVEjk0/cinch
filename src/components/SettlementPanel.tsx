@@ -15,6 +15,7 @@ import { partyName, toSettlementRecord, isCompleted } from "@/lib/circle";
 import type { ClearingResult } from "@/lib/types";
 import { buildSettlementBatch } from "@/lib/batch";
 import { useSettlement, useCinchAccount } from "@/lib/useSettlement";
+import { MultiPartyClearing } from "./MultiPartyClearing";
 import { confirmSettlement, type ChainConfirmation } from "@/lib/chain";
 import { formatAmount, formatWithSymbol, formatPercent, shortAddress } from "@/lib/money";
 import { explorerTxUrl } from "@/lib/tempo";
@@ -52,6 +53,14 @@ export function SettlementPanel({
   const batch = useMemo(() => buildSettlementBatch(result.transfers), [result.transfers]);
   const token = circle.defaultToken;
   const symbol = token.symbol;
+
+  // Multi-party: more than one distinct payer in the cleared set. One key can't
+  // move everyone's funds, so this routes to the on-chain clearing contract
+  // (Model C) where each payer authorizes their own leg by signature.
+  const isMultiParty = useMemo(
+    () => new Set(result.transfers.map((t) => t.from.toLowerCase())).size > 1,
+    [result.transfers]
+  );
 
   const name = (addr: string) => {
     const n = partyName(circle, addr);
@@ -343,7 +352,9 @@ export function SettlementPanel({
       {/* settle */}
       <div className="hairline" style={{ margin: "4px 0 18px" }} />
 
-      {batchUnsupported ? (
+      {isMultiParty ? (
+        <MultiPartyClearing circle={circle} result={result} onSettled={onSettled} />
+      ) : batchUnsupported ? (
         /* The wallet can't do an atomic batch. Offer the honest fallback. */
         <div className="stack" style={{ gap: 12 }}>
           <div

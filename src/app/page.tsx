@@ -104,7 +104,7 @@ export default function HomePage() {
       </section>
 
       {/* ----------------------------- features ----------------------------- */}
-      <section className="shell section" style={{ paddingTop: 0 }}>
+      <section className="shell section" style={{ paddingTop: 64, borderTop: "1px solid var(--hairline)" }}>
         <div style={{ marginBottom: 40, maxWidth: 620 }}>
           <p className="eyebrow" style={{ marginBottom: 18 }}>
             What makes it hold
@@ -128,7 +128,7 @@ export default function HomePage() {
       </section>
 
       {/* ---------------------------- use cases ----------------------------- */}
-      <section className="shell section" style={{ paddingTop: 0 }}>
+      <section className="shell section" style={{ paddingTop: 64, borderTop: "1px solid var(--hairline)" }}>
         <div style={{ marginBottom: 40, maxWidth: 620 }}>
           <p className="eyebrow" style={{ marginBottom: 18 }}>
             Where it clears
@@ -182,10 +182,15 @@ export default function HomePage() {
       </section>
 
       {/* ------------------------------- faq -------------------------------- */}
-      <section className="shell section" style={{ paddingTop: 0 }}>
-        <p className="eyebrow" style={{ marginBottom: 26 }}>
-          Questions
-        </p>
+      <section className="shell section" style={{ paddingTop: 64, borderTop: "1px solid var(--hairline)" }}>
+        <div style={{ marginBottom: 32, maxWidth: 620 }}>
+          <p className="eyebrow" style={{ marginBottom: 18 }}>
+            FAQ
+          </p>
+          <h2 className="display" style={{ fontSize: "clamp(1.8rem, 3.6vw, 2.5rem)" }}>
+            Questions?
+          </h2>
+        </div>
         <div>
           {FAQ.map((item, i) => (
             <div

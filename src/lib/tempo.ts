@@ -20,6 +20,13 @@ export interface TempoNetwork {
   explorerUrl: string;
   /** Public faucet URL (testnet only). */
   faucetUrl?: string;
+  /**
+   * Keyless fee-sponsor relay (testnet only). When set, the Cinch account's
+   * atomic 0x76 batches are co-signed and broadcast by this relay, so the
+   * account pays zero gas. It is a distinct service from `rpcUrl` — the plain
+   * RPC does not implement the relay's co-sign methods.
+   */
+  sponsorUrl?: string;
   /** Faucet-funded stablecoins available on this network. */
   tokens: Token[];
 }
@@ -77,6 +84,7 @@ export const MODERATO: TempoNetwork = {
   wsUrl: "wss://rpc.moderato.tempo.xyz",
   explorerUrl: "https://explore.testnet.tempo.xyz",
   faucetUrl: "https://faucet.tempo.xyz",
+  sponsorUrl: "https://sponsor.moderato.tempo.xyz",
   tokens: TESTNET_TOKENS,
 };
 

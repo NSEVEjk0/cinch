@@ -17,7 +17,6 @@ import {
 } from "@/lib/circle";
 import { SCENARIOS, scenarioToCircle } from "@/lib/scenarios";
 import { CreateTemplates } from "@/components/CreateTemplates";
-import { WalletPanel } from "@/components/WalletPanel";
 import { clearRoom } from "@/lib/netting";
 import { formatPercent } from "@/lib/money";
 import { useNetwork } from "@/lib/useNetwork";
@@ -93,10 +92,6 @@ export default function AppPage() {
           A circle is a set of parties and the debts between them. Open one, drop in the
           obligations, and clear the whole thing in a single settlement.
         </p>
-
-        <div style={{ marginBottom: 36 }}>
-          <WalletPanel />
-        </div>
 
         <div className="split-wide">
           {/* create */}

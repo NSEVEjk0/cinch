@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import { AccountModal } from "./AccountModal";
 import { WalletPanel } from "./WalletPanel";
@@ -168,7 +169,7 @@ export function AccountButton() {
           </a>
           {!isWallet ? (
             <MenuItem onClick={() => { setMenuOpen(false); setWalletOpen(true); }}>
-              Wallet · balances &amp; send
+              Wallet
             </MenuItem>
           ) : null}
           {!isWallet ? (
@@ -198,16 +199,22 @@ export function AccountButton() {
           </MenuItem>
         </div>
       ) : null}
-      {walletOpen ? (
-        <div className="modal-backdrop" onClick={() => setWalletOpen(false)}>
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: "100%", maxWidth: 460, maxHeight: "calc(100dvh - 40px)", overflowY: "auto" }}
-          >
-            <WalletPanel />
-          </div>
-        </div>
-      ) : null}
+      {walletOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div className="modal-backdrop" onClick={() => setWalletOpen(false)}>
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{ width: "100%", maxWidth: 460, maxHeight: "calc(100dvh - 40px)", overflowY: "auto" }}
+              >
+                <WalletPanel />
+                <button className="btn btn-ghost" style={{ width: "100%", marginTop: 10 }} onClick={() => setWalletOpen(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

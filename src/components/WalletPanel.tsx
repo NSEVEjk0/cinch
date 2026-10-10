@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AccountModal } from "./AccountModal";
 import { useCinchAccount } from "@/lib/useSettlement";
-import { accountSendToken, accountSponsors } from "@/lib/cinchAccount";
+import { accountSendToken } from "@/lib/cinchAccount";
 import { useNetwork } from "@/lib/useNetwork";
 import { readBalance, readTokenMeta } from "@/lib/chain";
 import { loadUserTokens, addUserToken, removeUserToken, allTokens } from "@/lib/userTokens";
@@ -24,6 +24,7 @@ export function WalletPanel() {
   const network = useNetwork();
   const { key, address, hasKey } = useCinchAccount();
   const [modalOpen, setModalOpen] = useState(false);
+  const [view, setView] = useState<"none" | "send" | "receive">("none");
 
   const [userTokens, setUserTokens] = useState<Token[]>([]);
   const tokens = useMemo(() => allTokens(network.key, network.tokens), [network, userTokens]);
@@ -76,18 +77,20 @@ export function WalletPanel() {
 
   return (
     <div className="card" style={{ overflow: "hidden" }}>
-      <ReceiveHeader address={address} />
+      <WalletHeader address={address} />
+      <ActionBar view={view} onView={(v) => setView((cur) => (cur === v ? "none" : v))} />
+      {view === "receive" ? <ReceivePanel address={address} /> : null}
+      {view === "send" ? <SendBox tokens={tokens} walletKey={key} onSent={refresh} /> : null}
       <Balances tokens={tokens} balances={balances} loading={loading} onRefresh={refresh}
         onRemove={(addr) => setUserTokens(removeUserToken(network.key, addr))} builtins={network.tokens} />
       <AddAsset network={network} onAdded={() => setUserTokens(loadUserTokens(network.key))} />
-      <SendBox tokens={tokens} walletKey={key} onSent={refresh} />
     </div>
   );
 }
 
-/* --------------------------------- receive -------------------------------- */
+/* --------------------------------- header --------------------------------- */
 
-function ReceiveHeader({ address }: { address: `0x${string}` }) {
+function WalletHeader({ address }: { address: `0x${string}` }) {
   const network = useNetwork();
   const [copied, setCopied] = useState(false);
   async function copy() {
@@ -102,7 +105,7 @@ function ReceiveHeader({ address }: { address: `0x${string}` }) {
   return (
     <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--hairline)" }}>
       <div className="between" style={{ marginBottom: 10 }}>
-        <span className="label">Your wallet</span>
+        <span className="label">Your Cinch wallet</span>
         <span className="chip chip-mint">self-custodial</span>
       </div>
       <div className="between" style={{ gap: 10, alignItems: "center" }}>
@@ -111,24 +114,109 @@ function ReceiveHeader({ address }: { address: `0x${string}` }) {
         </span>
         <div className="row" style={{ gap: 6, flexShrink: 0 }}>
           <button className="btn btn-ghost btn-sm" onClick={copy}>
-            {copied ? "Copied ✓" : "Copy address"}
+            {copied ? "Copied ✓" : "Copy"}
           </button>
           <a className="btn btn-quiet btn-sm" href={explorerAddressUrl(network, address)} target="_blank" rel="noreferrer">
             Explorer ↗
           </a>
         </div>
       </div>
-      <p className="faint" style={{ fontSize: "0.78rem", margin: "10px 0 0" }}>
-        To receive, share this address — any Tempo asset sent to it shows up below.
-        {network.faucetUrl ? (
-          <>
-            {" "}
-            <a href={network.faucetUrl} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>
-              Fund from the faucet ↗
-            </a>
-          </>
-        ) : null}
+    </div>
+  );
+}
+
+/* ------------------------------ action bar -------------------------------- */
+
+function ActionBar({ view, onView }: { view: "none" | "send" | "receive"; onView: (v: "send" | "receive") => void }) {
+  return (
+    <div className="row" style={{ gap: 10, padding: "14px 22px", borderBottom: "1px solid var(--hairline)" }}>
+      <ActionButton label="Send" active={view === "send"} onClick={() => onView("send")} icon={<SendIcon />} />
+      <ActionButton label="Receive" active={view === "receive"} onClick={() => onView("receive")} icon={<ReceiveIcon />} />
+    </div>
+  );
+}
+
+function ActionButton({ label, icon, active, onClick }: { label: string; icon: React.ReactNode; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="row"
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        gap: 8,
+        padding: "11px 0",
+        borderRadius: "var(--r-sm)",
+        border: `1px solid ${active ? "var(--accent-line)" : "var(--hairline-2)"}`,
+        background: active ? "var(--accent-glow)" : "var(--surface)",
+        color: active ? "var(--accent)" : "var(--text)",
+        fontWeight: 540,
+        fontSize: "0.92rem",
+        cursor: "pointer",
+      }}
+    >
+      <span style={{ display: "inline-flex", width: 26, height: 26, alignItems: "center", justifyContent: "center", borderRadius: "50%", background: active ? "var(--accent)" : "var(--surface-3)", color: active ? "var(--accent-ink)" : "var(--text-2)" }}>
+        {icon}
+      </span>
+      {label}
+    </button>
+  );
+}
+
+/** Classic send glyph — a diagonal up-right arrow. */
+function SendIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="7" y1="17" x2="17" y2="7" />
+      <polyline points="8 7 17 7 17 16" />
+    </svg>
+  );
+}
+
+/** Classic receive glyph — a diagonal down-left arrow (mirror of send). */
+function ReceiveIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="17" y1="7" x2="7" y2="17" />
+      <polyline points="16 17 7 17 7 8" />
+    </svg>
+  );
+}
+
+/* --------------------------------- receive -------------------------------- */
+
+function ReceivePanel({ address }: { address: `0x${string}` }) {
+  const network = useNetwork();
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
+  return (
+    <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--hairline)" }}>
+      <span className="label">Receive</span>
+      <p className="faint" style={{ fontSize: "0.82rem", margin: "8px 0 10px" }}>
+        Share this address — any Tempo asset sent to it shows up in your balances.
       </p>
+      <div
+        className="mono"
+        style={{ fontSize: "0.82rem", wordBreak: "break-all", padding: "12px 14px", border: "1px solid var(--line)", borderRadius: "var(--r-sm)", background: "var(--surface-2)" }}
+      >
+        {address}
+      </div>
+      <div className="row" style={{ gap: 8, marginTop: 10 }}>
+        <button className="btn btn-primary btn-sm" onClick={copy}>{copied ? "Copied ✓" : "Copy address"}</button>
+        {network.faucetUrl ? (
+          <a className="btn btn-ghost btn-sm" href={network.faucetUrl} target="_blank" rel="noreferrer">
+            Fund from faucet ↗
+          </a>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -340,9 +428,6 @@ function SendBox({ tokens, walletKey, onSent }: { tokens: Token[]; walletKey: `0
       <button className="btn btn-primary" style={{ marginTop: 14, width: "100%" }} onClick={send} disabled={status === "sending" || !amount.trim() || !to.trim()}>
         {status === "sending" ? "Sending on Tempo…" : `Send ${token?.symbol ?? ""}`}
       </button>
-      <p className="faint" style={{ fontSize: "0.76rem", marginTop: 10, textAlign: "center" }}>
-        {accountSponsors(network) ? "Fee sponsored — nothing leaves beyond the amount you send." : "Fee paid from your balance."}
-      </p>
     </div>
   );
 }

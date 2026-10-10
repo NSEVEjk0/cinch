@@ -24,7 +24,11 @@ import {
   mergeCircle,
   encodeCircle,
   cadenceDue,
+  newMember,
+  claimedParty,
+  isClaimed,
 } from "@/lib/circle";
+import { generateClaim, buildClaimLink, parseClaimFragment, verifyClaim, recallCode, rememberCode } from "@/lib/claim";
 import { clearRoom } from "@/lib/netting";
 import { discountActive, isOverdue } from "@/lib/invoice";
 import { pushCircle, pullCircle, syncAvailable } from "@/lib/sync";
@@ -33,6 +37,14 @@ import { downloadExport } from "@/lib/accounting";
 import { useNetwork } from "@/lib/useNetwork";
 import { parseAmount, formatAmount, formatWithSymbol, formatPercent, isAddress, shortAddress } from "@/lib/money";
 import type { Obligation, NettingMode } from "@/lib/types";
+
+/** The state of resolving a per-member invite link on this device. */
+type ClaimState =
+  | { kind: "none" }
+  | { kind: "need-wallet"; name: string }
+  | { kind: "bound"; name: string }
+  | { kind: "mismatch"; name: string }
+  | { kind: "error"; message: string };
 
 export default function CirclePage() {
   const params = useParams();
@@ -43,15 +55,25 @@ export default function CirclePage() {
   const [notFound, setNotFound] = useState(false);
   const [view, setView] = useState<"gross" | "net">("gross");
   const [liveSync, setLiveSync] = useState(false);
+  // A per-member invite link (#m=slot.code) captured from the URL, waiting for
+  // a wallet to bind to the slot. Set once at load; cleared when it resolves.
+  const [pendingClaim, setPendingClaim] = useState<{ slotId: string; code: string } | null>(null);
+  const [claimState, setClaimState] = useState<ClaimState>({ kind: "none" });
+  const identity = useIdentity();
   // Latest circle, for the polling interval to merge against without re-arming.
   const circleRef = useRef<Circle | null>(null);
   circleRef.current = circle;
 
   useEffect(() => {
     const c = loadCircle(id);
-    // A shared circle arrives as a #c=… fragment; merge it into (or create) the
-    // local copy so several people can contribute to the same room by link.
     const frag = typeof window !== "undefined" ? window.location.hash : "";
+    // A per-member invite link carries #m=<slot>.<code>; capture it to bind a
+    // wallet to that slot once an identity is available.
+    const claim = parseClaimFragment(frag);
+    if (claim) setPendingClaim(claim);
+    // A shared circle arrives as a #c=… fragment (invite links carry it too);
+    // merge it into (or create) the local copy so several people can contribute
+    // to the same room by link.
     const m = frag.match(/[#&]c=([^&]+)/);
     if (m) {
       const incoming = decodeCircle(decodeURIComponent(m[1]));
@@ -59,15 +81,22 @@ export default function CirclePage() {
         const merged = c ? mergeCircle(c, incoming) : incoming;
         saveCircle(merged);
         setCircle(merged);
-        // Clean the fragment so a refresh doesn't re-merge.
-        if (typeof window !== "undefined") {
-          window.history.replaceState(null, "", window.location.pathname);
-        }
-        return;
+      } else if (!c) {
+        setNotFound(true);
+      } else {
+        setCircle(c);
       }
+    } else if (!c) {
+      // No local copy and no inline circle — a bare invite link relies on live
+      // sync to pull the room in (handled by the sync effect below).
+      if (!claim) setNotFound(true);
+    } else {
+      setCircle(c);
     }
-    if (!c) setNotFound(true);
-    else setCircle(c);
+    // Clean the fragment so a refresh doesn't re-merge or re-trigger the claim.
+    if ((m || claim) && typeof window !== "undefined") {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
   }, [id]);
 
   // Live shared circles (optional): pull the server copy and merge, then poll
@@ -115,6 +144,49 @@ export default function CirclePage() {
     [circle]
   );
 
+  // Resolve a pending invite claim: once an identity exists, verify the secret
+  // code against the slot's stored hash and bind the wallet to that slot. This
+  // is what makes a claim provably from someone the creator handed the link to.
+  useEffect(() => {
+    if (!pendingClaim || !circle) return;
+    const slot = circle.parties.find((p) => p.id === pendingClaim.slotId);
+    if (!slot) {
+      setClaimState({ kind: "error", message: "This invite link doesn't match anyone in this circle." });
+      setPendingClaim(null);
+      return;
+    }
+    if (!identity.address) {
+      setClaimState({ kind: "need-wallet", name: slot.name });
+      return; // wait for a wallet / Cinch account
+    }
+    const addr = identity.address.toLowerCase();
+    if (slot.address) {
+      // Slot already bound — fine if it's this same wallet, otherwise refuse.
+      if (slot.address.toLowerCase() === addr) setClaimState({ kind: "bound", name: slot.name });
+      else setClaimState({ kind: "mismatch", name: slot.name });
+      setPendingClaim(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const ok = slot.claimTokenHash ? await verifyClaim(pendingClaim.code, slot.claimTokenHash) : false;
+      if (cancelled) return;
+      if (!ok) {
+        setClaimState({ kind: "error", message: "This invite link is invalid or has expired." });
+        setPendingClaim(null);
+        return;
+      }
+      const bound: Party = { ...slot, address: identity.address!, claimedAt: new Date().toISOString() };
+      persist({ ...circle, parties: circle.parties.map((p) => (p.id === slot.id ? bound : p)) });
+      setClaimState({ kind: "bound", name: slot.name });
+      setPendingClaim(null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingClaim, circle, identity.address]);
+
   function persist(next: Circle) {
     setCircle(next);
     saveCircle(next);
@@ -129,7 +201,7 @@ export default function CirclePage() {
 
   function addParty(p: Party) {
     if (!circle) return;
-    if (circle.parties.some((x) => x.address.toLowerCase() === p.address.toLowerCase())) return;
+    if (circle.parties.some((x) => x.id === p.id || (x.address && p.address && x.address.toLowerCase() === p.address.toLowerCase()))) return;
     persist({ ...circle, parties: [...circle.parties, p] });
   }
 
@@ -225,9 +297,12 @@ export default function CirclePage() {
 
         <SavingsBar circle={circle} />
 
+        <ClaimBanner state={claimState} />
+
         <div className="split" style={{ gap: 28, alignItems: "start" }}>
           {/* ------------------------- left: editor ------------------------- */}
           <div className="stack" style={{ gap: 20 }}>
+            <MembersPanel circle={circle} circleId={id} onAddParty={addParty} />
             <AddObligation circle={circle} onAddParty={addParty} onAdd={addObligation} />
             <ObligationList
               circle={circle}
@@ -263,7 +338,7 @@ export default function CirclePage() {
               </div>
               {circle.parties.length >= 2 ? (
                 <CircleDiagram
-                  parties={circle.parties}
+                  parties={circle.parties.filter((p) => p.address).map((p) => ({ address: p.address!, name: p.name }))}
                   obligations={circle.obligations.filter((o) => !o.disputed)}
                   transfers={result.transfers}
                   mode={view}
@@ -322,12 +397,12 @@ function AddObligation({
   // per-token and settle together in one clear().
   const token = network.tokens.find((t) => t.symbol === tokenSym) ?? circle.defaultToken;
 
-  function resolveParty(input: string): { address: `0x${string}`; name: string } | null {
+  function resolveParty(input: string): Party | null {
     const trimmed = input.trim();
-    // Match an existing party by name first.
+    // Match an existing member by name first (members are added in the panel above).
     const byName = circle.parties.find((p) => p.name.toLowerCase() === trimmed.toLowerCase());
     if (byName) return byName;
-    if (isAddress(trimmed)) return { address: trimmed, name: shortAddress(trimmed) };
+    if (isAddress(trimmed)) return claimedParty(trimmed, shortAddress(trimmed));
     return null;
   }
 
@@ -335,8 +410,10 @@ function AddObligation({
     setError(null);
     const d = resolveParty(debtor);
     const c = resolveParty(creditor);
-    if (!d) return setError("The payer must be a known party name or a 0x address.");
-    if (!c) return setError("The payee must be a known party name or a 0x address.");
+    if (!d) return setError("The payer must be a member name or a 0x address.");
+    if (!c) return setError("The payee must be a member name or a 0x address.");
+    if (!d.address) return setError(`${d.name} hasn't claimed their invite link yet, so there's no address to settle to.`);
+    if (!c.address) return setError(`${c.name} hasn't claimed their invite link yet, so there's no address to settle to.`);
     if (d.address.toLowerCase() === c.address.toLowerCase())
       return setError("A party cannot owe themselves.");
     let units: bigint;
@@ -408,7 +485,7 @@ function AddObligation({
       </div>
       <datalist id="party-list">
         {circle.parties.map((p) => (
-          <option key={p.address} value={p.name} />
+          <option key={p.id} value={p.name} />
         ))}
       </datalist>
       <div className="g2" style={{ gap: 12, marginTop: 12 }}>
@@ -591,7 +668,7 @@ function partyNameShort(circle: Circle, address: string): string {
 /** A cheap change signature for a circle (parties + obligations), for sync diffing. */
 function circleSignature(c: Circle): string {
   const parties = c.parties
-    .map((p) => `${p.address.toLowerCase()}:${p.name}:${p.attestedAt ?? ""}`)
+    .map((p) => `${p.id}:${(p.address ?? "").toLowerCase()}:${p.name}:${p.claimedAt ?? p.attestedAt ?? ""}`)
     .sort()
     .join("|");
   const obs = c.obligations
@@ -729,6 +806,181 @@ function ModeToggle({ mode, onChange }: { mode: NettingMode; onChange: (m: Netti
 }
 
 /* -------------------------------------------------------------------------- */
+/* Members panel — the creator adds members by name and shares a link each      */
+/* -------------------------------------------------------------------------- */
+
+function MembersPanel({
+  circle,
+  circleId,
+  onAddParty,
+}: {
+  circle: Circle;
+  circleId: string;
+  onAddParty: (p: Party) => void;
+}) {
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function add() {
+    const nm = name.trim();
+    if (!nm) return;
+    if (circle.parties.some((p) => p.name.toLowerCase() === nm.toLowerCase())) {
+      setError("Someone with that name is already in the circle.");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    try {
+      // Mint a secret code + its hash. The hash goes on the circle; the raw code
+      // is kept on this device and only ever travels inside the member's link.
+      const { code, tokenHash } = await generateClaim();
+      const member = newMember(nm, tokenHash);
+      rememberCode(circleId, member.id, code);
+      onAddParty(member);
+      setName("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card card-pad">
+      <h2 className="display" style={{ fontSize: "1.2rem", marginBottom: 6 }}>
+        Members
+      </h2>
+      <p className="faint" style={{ margin: "0 0 16px", fontSize: "0.84rem", lineHeight: 1.55 }}>
+        Add each party by name. Cinch mints a private invite link per member — whoever opens theirs
+        and connects a wallet claims that slot, binding their address to the name.
+      </p>
+
+      {circle.parties.length > 0 ? (
+        <div className="stack" style={{ gap: 8, marginBottom: 16 }}>
+          {circle.parties.map((p) => (
+            <div
+              key={p.id}
+              className="between"
+              style={{
+                gap: 12,
+                padding: "10px 12px",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--line)",
+                background: "var(--surface-2)",
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div className="row" style={{ gap: 8 }}>
+                  <span style={{ fontWeight: 540, fontSize: "0.92rem" }}>{p.name}</span>
+                  {isClaimed(p) ? (
+                    <span className="chip chip-mint">claimed</span>
+                  ) : (
+                    <span className="chip" style={{ color: "var(--amber-400)" }}>invite pending</span>
+                  )}
+                </div>
+                {p.address ? (
+                  <div className="faint mono" style={{ fontSize: "0.74rem", marginTop: 3 }}>
+                    {shortAddress(p.address)}
+                  </div>
+                ) : null}
+              </div>
+              <InviteLink circle={circle} circleId={circleId} member={p} />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="row" style={{ gap: 8 }}>
+        <input
+          className="field"
+          style={{ flex: 1 }}
+          placeholder="Member name (e.g. Meridian)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !busy && add()}
+        />
+        <button className="btn btn-primary" onClick={add} disabled={busy || !name.trim()}>
+          {busy ? "Adding…" : "Add member"}
+        </button>
+      </div>
+      {error ? <p style={{ color: "var(--rose-400)", marginTop: 10, fontSize: "0.86rem" }}>{error}</p> : null}
+    </div>
+  );
+}
+
+/** The per-member invite link control. The raw code is only on the minting device. */
+function InviteLink({ circle, circleId, member }: { circle: Circle; circleId: string; member: Party }) {
+  const [copied, setCopied] = useState(false);
+
+  if (member.address) {
+    return (
+      <span className="mono" style={{ fontSize: "0.74rem", color: "var(--mint-400)" }}>
+        ✓ bound
+      </span>
+    );
+  }
+
+  const code = recallCode(circleId, member.id);
+  if (!code) {
+    return (
+      <span className="faint" style={{ fontSize: "0.72rem", textAlign: "right", maxWidth: 150 }}>
+        invite link is on the creator&apos;s device
+      </span>
+    );
+  }
+
+  async function copy() {
+    if (typeof window === "undefined") return;
+    // Carry the circle itself in the link (c=) so the member sees the room even
+    // without live sync; the secret code (m=) binds them to their slot.
+    const base = buildClaimLink(window.location.origin, circleId, member.id, code!);
+    const link = `${base}&c=${encodeURIComponent(encodeCircle(circle))}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
+
+  return (
+    <button className="btn btn-ghost btn-sm" style={{ whiteSpace: "nowrap" }} onClick={copy}>
+      {copied ? "Link copied ✓" : "Copy invite link"}
+    </button>
+  );
+}
+
+/** Banner shown to someone opening a per-member invite link. */
+function ClaimBanner({ state }: { state: ClaimState }) {
+  if (state.kind === "none") return null;
+
+  const tone =
+    state.kind === "bound"
+      ? { bg: "var(--mint-glow)", color: "var(--mint-400)" }
+      : state.kind === "error" || state.kind === "mismatch"
+      ? { bg: "rgba(240,120,120,0.08)", color: "var(--rose-400)" }
+      : { bg: "var(--surface-2)", color: "var(--text)" };
+
+  const text =
+    state.kind === "need-wallet"
+      ? `You've been invited as ${state.name}. Connect a wallet or create a Cinch account below to claim your spot.`
+      : state.kind === "bound"
+      ? `You're confirmed as ${state.name} — your wallet is now bound to this slot.`
+      : state.kind === "mismatch"
+      ? `${state.name}'s spot is already claimed by a different wallet. If that's you, open the link from the device you first claimed on.`
+      : state.message;
+
+  return (
+    <div
+      className="card card-pad"
+      style={{ padding: "14px 18px", marginBottom: 20, background: tone.bg, border: "1px solid var(--line)" }}
+    >
+      <span style={{ fontSize: "0.9rem", color: tone.color }}>{text}</span>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* Attest panel — connect wallet to confirm you're a party                    */
 /* -------------------------------------------------------------------------- */
 
@@ -736,7 +988,7 @@ function AttestPanel({ circle, onAttest }: { circle: Circle; onAttest: (p: Party
   const { address } = useIdentity();
   if (!address) return null;
 
-  const me = circle.parties.find((p) => p.address.toLowerCase() === address.toLowerCase());
+  const me = circle.parties.find((p) => p.address?.toLowerCase() === address.toLowerCase());
   if (!me) return null; // the account isn't a listed party
 
   if (me.attestedAt) {

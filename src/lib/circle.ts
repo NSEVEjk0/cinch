@@ -18,10 +18,17 @@ export type Cadence = "once" | "daily" | "weekly" | "monthly";
 export type { NettingMode };
 
 export interface Party {
-  address: `0x${string}`;
-  /** Human label chosen in the room; never leaves the browser. */
+  /** Stable slot id — the member's identity in the circle, independent of address. */
+  id: string;
+  /** Human label the creator chose (e.g. "Meridian"). */
   name: string;
-  /** Set when the party connected their wallet and attested to the room. */
+  /** Bound wallet address — set only once the member claims their invite link. */
+  address?: `0x${string}`;
+  /** SHA-256 of the member's secret claim code; the raw code lives only in the link. */
+  claimTokenHash?: string;
+  /** When the member claimed their slot by binding a wallet. */
+  claimedAt?: string;
+  /** Legacy: set when a party attested in the old address-first flow. */
   attestedAt?: string;
 }
 
@@ -165,7 +172,32 @@ function serialize(c: Circle): SerialCircle {
   return { ...c, obligations: c.obligations.map((o) => ({ ...o, amount: o.amount.toString() })) };
 }
 function deserialize(c: SerialCircle): Circle {
-  return { ...c, obligations: c.obligations.map((o) => ({ ...o, amount: BigInt(o.amount) })) };
+  return {
+    ...c,
+    parties: (c.parties ?? []).map(normalizeParty),
+    obligations: c.obligations.map((o) => ({ ...o, amount: BigInt(o.amount) })),
+  };
+}
+
+/** A member has claimed once a wallet address is bound to their slot. */
+export function isClaimed(p: Party): boolean {
+  return !!p.address;
+}
+
+/** Back-fill a stable slot id on parties from older circles (keyed by address then). */
+function normalizeParty(p: Party): Party {
+  if (p.id) return p;
+  return { ...p, id: p.address ? `m_${p.address.toLowerCase()}` : newId("m") };
+}
+
+/** A fresh unclaimed member slot (the creator names it; the code/hash come from claim.ts). */
+export function newMember(name: string, claimTokenHash?: string): Party {
+  return { id: newId("m"), name: name.trim() || "Member", ...(claimTokenHash ? { claimTokenHash } : {}) };
+}
+
+/** A party that already has a known address (demo data, or a counterparty typed directly). */
+export function claimedParty(address: `0x${string}`, name: string): Party {
+  return { id: `m_${address.toLowerCase()}`, address, name };
 }
 
 /* ------------------------------ construction ------------------------------ */
@@ -188,7 +220,7 @@ export function createCircle(input: {
 
 /** Resolve a party's display name within a circle, falling back to the address. */
 export function partyName(circle: Circle, address: string): string {
-  const p = circle.parties.find((x) => x.address.toLowerCase() === address.toLowerCase());
+  const p = circle.parties.find((x) => x.address?.toLowerCase() === address.toLowerCase());
   return p?.name || address;
 }
 
@@ -291,14 +323,25 @@ export function decodeCircle(encoded: string): Circle | null {
 
 /**
  * Merge an incoming (shared) circle into the local copy without losing data:
- * union parties by address and obligations by id, keeping local settlements.
+ * union parties by slot id and obligations by id, keeping local settlements. A
+ * claim made on one device (address + claimedAt bound to a slot) propagates to
+ * everyone through this merge.
  */
 export function mergeCircle(local: Circle, incoming: Circle): Circle {
-  const parties = [...local.parties];
-  for (const p of incoming.parties) {
-    const existing = parties.find((x) => x.address.toLowerCase() === p.address.toLowerCase());
-    if (!existing) parties.push(p);
-    else if (p.attestedAt && !existing.attestedAt) existing.attestedAt = p.attestedAt;
+  const parties = local.parties.map(normalizeParty);
+  for (const raw of incoming.parties) {
+    const p = normalizeParty(raw);
+    const existing = parties.find((x) => x.id === p.id);
+    if (!existing) {
+      parties.push(p);
+      continue;
+    }
+    // A bound address / claim wins over an unbound slot; keep the latest name.
+    if (p.address && !existing.address) existing.address = p.address;
+    if (p.claimedAt && !existing.claimedAt) existing.claimedAt = p.claimedAt;
+    if (p.claimTokenHash && !existing.claimTokenHash) existing.claimTokenHash = p.claimTokenHash;
+    if (p.attestedAt && !existing.attestedAt) existing.attestedAt = p.attestedAt;
+    if (p.name && p.name !== existing.name && !existing.address) existing.name = p.name;
   }
   const obById = new Map(local.obligations.map((o) => [o.id, o]));
   for (const o of incoming.obligations) if (!obById.has(o.id)) obById.set(o.id, o);

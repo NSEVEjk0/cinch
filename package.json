@@ -10,7 +10,11 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "test:onchain": "CINCH_ONCHAIN=1 vitest run test/clearing.onchain.test.ts",
+    "typecheck": "tsc --noEmit",
+    "contract:compile": "node scripts/compile.mjs",
+    "contract:gen-deployer": "node scripts/gen-deployer.mjs",
+    "contract:deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",

@@ -1,0 +1,274 @@
+{
+  "contractName": "CinchClearing",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "roundId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "legCount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Cleared",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "roundId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "memo",
+          "type": "bytes32"
+        }
+      ],
+      "name": "LegCleared",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "DOMAIN_SEPARATOR",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "roundId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "legsHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "authorizationDigest",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "roundId",
+          "type": "bytes32"
+        },
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "token",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "memo",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct CinchClearing.Leg[]",
+          "name": "legs",
+          "type": "tuple[]"
+        },
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "token",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "deadline",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "v",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "r",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "s",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct CinchClearing.Permit[]",
+          "name": "permits",
+          "type": "tuple[]"
+        },
+        {
+          "internalType": "bytes[]",
+          "name": "auths",
+          "type": "bytes[]"
+        }
+      ],
+      "name": "clear",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "cleared",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "roundId",
+          "type": "bytes32"
+        },
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "token",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "memo",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct CinchClearing.Leg[]",
+          "name": "legs",
+          "type": "tuple[]"
+        }
+      ],
+      "name": "computeLegsHash",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x60a060405234801561000f575f5ffd5b506040805180820182526005815264086d2dcc6d60db1b6020918201528151808301835260018152603160f81b9082015281517f8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f918101919091527f39297c27386fec9c641788c168becdb549dca4edd1930ec3eee3078f564af245918101919091527fc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc660608201524660808201523060a082015260c00160408051601f198184030181529190528051602090910120608052608051610c616101005f395f8181605e01526106ce0152610c615ff3fe608060405234801561000f575f5ffd5b5060043610610055575f3560e01c80633644e5151461005957806391d84dcd14610093578063b4d331e3146100a6578063d467f49e146100b9578063f4b296cb146100eb575b5f5ffd5b6100807f000000000000000000000000000000000000000000000000000000000000000081565b6040519081526020015b60405180910390f35b6100806100a13660046108ca565b610100565b6100806100b4366004610932565b610114565b6100db6100c736600461097a565b5f6020819052908152604090205460ff1681565b604051901515815260200161008a565b6100fe6100f93660046109d2565b610149565b005b5f61010b838361066a565b90505b92915050565b5f83838360405160200161012a93929190610ac7565b6040516020818303038152906040528051906020012090509392505050565b5f8781526020819052604090205460ff16156101a45760405162461bcd60e51b81526020600482015260156024820152741c9bdd5b9908185b1c9958591e4818db19585c9959605a1b60448201526064015b60405180910390fd5b846101db5760405162461bcd60e51b81526020600482015260076024820152666e6f206c65677360c81b604482015260640161019b565b5f8787876040516020016101f193929190610ac7565b6040516020818303038152906040528051906020012090505f610214898361066a565b90505f8367ffffffffffffffff81111561023057610230610b61565b604051908082528060200260200182016040528015610259578160200160208202803683370190505b5090505f5b848110156102c5576102938387878481811061027c5761027c610b75565b905060200281019061028e9190610b89565b610714565b8282815181106102a5576102a5610b75565b6001600160a01b039092166020928302919091019091015260010161025e565b505f5b8881101561034e57610303828b8b848181106102e6576102e6610b75565b905060a0020160200160208101906102fe9190610bcc565b610871565b6103465760405162461bcd60e51b81526020600482015260146024820152731c185e595c881b9bdd08185d5d1a1bdc9a5e995960621b604482015260640161019b565b6001016102c8565b505f5b86811015610448573688888381811061036c5761036c610b75565b60e00291909101915061038490506020820182610bcc565b6001600160a01b031663d505accf6103a26040840160208501610bcc565b30604085013560608601356103bd60a0880160808901610be5565b6040516001600160e01b031960e088901b1681526001600160a01b0395861660048201529490931660248501526044840191909152606483015260ff16608482015260a084013560a482015260c084013560c482015260e4015f604051808303815f87803b15801561042d575f5ffd5b505af192505050801561043e575060015b5050600101610351565b505f5b8881101561060957368a8a8381811061046657610466610b75565b60a00291909101915061047e90506020820182610bcc565b6001600160a01b031663929c253961049c6040840160208501610bcc565b6104ac6060850160408601610bcc565b6040516001600160e01b031960e085901b1681526001600160a01b0392831660048201529116602482015260608401356044820152608084013560648201526084016020604051808303815f875af115801561050a573d5f5f3e3d5ffd5b505050506040513d601f19601f8201168201806040525081019061052e9190610c0c565b6105705760405162461bcd60e51b81526020600482015260136024820152721b1959c81d1c985b9cd9995c8819985a5b1959606a1b604482015260640161019b565b6105806040820160208301610bcc565b6001600160a01b03166105966020830183610bcc565b6001600160a01b03168d7fc33654462cffbecd99e8f62dd10c9da58e58edfdd889e338149681aecd0422a76105d16060860160408701610bcc565b604080516001600160a01b0392909216825260608781013560208401526080880135838301529051918290030190a45060010161044b565b505f8a81526020819052604090819020805460ff19166001179055518a907f4d7454af2b9764b1ae6185cd6aa5baa9afec6536b5ef43f4213a1ca5154037e090610656908b815260200190565b60405180910390a250505050505050505050565b604080517f42dda7a65d801f396d628e4df461a722cba30b64c4240d20b1eab23d0f52ed2c602080830191909152818301949094526060808201939093528151808203909301835260808101825282519284019290922061190160f01b60a08401527f000000000000000000000000000000000000000000000000000000000000000060a284015260c2808401919091528151808403909101815260e29092019052805191012090565b5f6041821461075c5760405162461bcd60e51b81526020600482015260146024820152730c4c2c840e6d2cedcc2e8eae4ca40d8cadccee8d60631b604482015260640161019b565b8235602084013560408501355f1a7f7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a08211156107c25760405162461bcd60e51b8152602060048201526005602482015264626164207360d81b604482015260640161019b565b604080515f808252602082018084528a905260ff841692820192909252606081018590526080810184905260019060a0016020604051602081039080840390855afa158015610813573d5f5f3e3d5ffd5b5050604051601f1901519150506001600160a01b0381166108665760405162461bcd60e51b815260206004820152600d60248201526c626164207369676e617475726560981b604482015260640161019b565b979650505050505050565b5f805b83518110156108c157826001600160a01b031684828151811061089957610899610b75565b60200260200101516001600160a01b0316036108b957600191505061010e565b600101610874565b505f9392505050565b5f5f604083850312156108db575f5ffd5b50508035926020909101359150565b5f5f83601f8401126108fa575f5ffd5b50813567ffffffffffffffff811115610911575f5ffd5b60208301915083602060a08302850101111561092b575f5ffd5b9250929050565b5f5f5f60408486031215610944575f5ffd5b83359250602084013567ffffffffffffffff811115610961575f5ffd5b61096d868287016108ea565b9497909650939450505050565b5f6020828403121561098a575f5ffd5b5035919050565b5f5f83601f8401126109a1575f5ffd5b50813567ffffffffffffffff8111156109b8575f5ffd5b6020830191508360208260051b850101111561092b575f5ffd5b5f5f5f5f5f5f5f6080888a0312156109e8575f5ffd5b87359650602088013567ffffffffffffffff811115610a05575f5ffd5b610a118a828b016108ea565b909750955050604088013567ffffffffffffffff811115610a30575f5ffd5b8801601f81018a13610a40575f5ffd5b803567ffffffffffffffff811115610a56575f5ffd5b8a602060e083028401011115610a6a575f5ffd5b60209190910194509250606088013567ffffffffffffffff811115610a8d575f5ffd5b610a998a828b01610991565b989b979a50959850939692959293505050565b80356001600160a01b0381168114610ac2575f5ffd5b919050565b83815260406020820181905281018290525f8360608301825b85811015610b56576001600160a01b03610af984610aac565b1682526001600160a01b03610b1060208501610aac565b1660208301526001600160a01b03610b2a60408501610aac565b166040830152606083810135908301526080808401359083015260a09283019290910190600101610ae0565b509695505050505050565b634e487b7160e01b5f52604160045260245ffd5b634e487b7160e01b5f52603260045260245ffd5b5f5f8335601e19843603018112610b9e575f5ffd5b83018035915067ffffffffffffffff821115610bb8575f5ffd5b60200191503681900382131561092b575f5ffd5b5f60208284031215610bdc575f5ffd5b61010b82610aac565b5f60208284031215610bf5575f5ffd5b813560ff81168114610c05575f5ffd5b9392505050565b5f60208284031215610c1c575f5ffd5b81518015158114610c05575f5ffdfea2646970667358221220eef312454f3ad8046d271ac7b432e9cca1818f6c6e2aa9175bd32a8d979fc2cb64736f6c634300081c0033",
+  "compiler": "0.8.28+commit.7893614a.Emscripten.clang",
+  "evmVersion": "cancun"
+}

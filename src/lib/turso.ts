@@ -39,3 +39,19 @@ export async function ensureSchema(c: Client): Promise<void> {
   );
   ensured = true;
 }
+
+let ensuredRounds = false;
+
+/**
+ * Create the round-authorizations table once per process. Each row is one
+ * payer's signed authorization (permit + Authorization signature) for a Model C
+ * clearing round, so the organiser can collect every payer's consent before
+ * submitting the single atomic clear(). The payload is opaque to the server.
+ */
+export async function ensureRoundSchema(c: Client): Promise<void> {
+  if (ensuredRounds) return;
+  await c.execute(
+    "CREATE TABLE IF NOT EXISTS round_auths (round_id TEXT NOT NULL, payer TEXT NOT NULL, payload TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (round_id, payer))"
+  );
+  ensuredRounds = true;
+}

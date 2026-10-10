@@ -31,9 +31,11 @@ ledger or a trusted spreadsheet, and someone always has to go first.
 
 ## What makes it hold
 
-- **One atomic settlement.** The entire cleared circle is a single Tempo batch —
-  it clears every leg together or does nothing at all. No risky escrow, no
-  going first.
+- **One atomic settlement.** The entire cleared circle settles together or does
+  nothing at all — no risky escrow, no going first. When one account owes the
+  circle, that is a single Tempo batch; when several independent parties each owe
+  (a real multilateral circle), it is one call to the on-chain clearing contract
+  (see below).
 - **Liquidity-aware clearing.** If a party cannot fund their net position
   on-chain, Cinch settles the largest sub-circle everyone present can cover
   rather than failing the whole round.
@@ -46,12 +48,45 @@ ledger or a trusted spreadsheet, and someone always has to go first.
 - **Disputes don't block.** Flag an obligation and it is held out of the round;
   the rest still clears.
 
+## How a circle settles
+
+A cleared round is a set of transfers, each `from` a net debtor `to` a net
+creditor. Who signs depends on how many distinct debtors there are:
+
+- **One payer** (a treasury, a payroll account, an organiser who already holds
+  the funds) → that account signs one atomic Tempo batch. One signature, done.
+- **Several payers** (a genuine multilateral circle — a trip, a DAO and its
+  contributors) → no single key can move everyone's money, so Cinch uses the
+  **CinchClearing** contract (`contracts/CinchClearing.sol`). Each net debtor
+  signs two things off-chain, costing nothing and moving nothing:
+  1. an **EIP-2612 `permit`** granting the contract an allowance for their net
+     amount;
+  2. an **EIP-712 `Authorization`** binding them to the exact, whole leg set.
+
+  The organiser then submits a single `clear()` that pulls every leg
+  debtor→creditor with `transferFromWithMemo`. Because each signature commits to
+  the hash of the entire ordered leg set, no amount and no recipient can be
+  altered after signing — and the whole circle settles in one transaction or
+  reverts. Nobody goes first; nobody is left short. The flow is proven
+  end-to-end against the live Moderato testnet in `test/clearing.onchain.test.ts`.
+
+  ```bash
+  npm run contract:compile        # solc -> src/lib/clearingArtifact.json
+  npm run contract:gen-deployer   # a fresh root key to fund (faucet.tempo.xyz)
+  npm run contract:deploy         # deploy + record NEXT_PUBLIC_CINCH_CLEARING_ADDRESS
+  npm run test:onchain            # live multi-party clear() on Moderato
+  ```
+
+  Set `NEXT_PUBLIC_CINCH_CLEARING_ADDRESS` (locally in `.env.local`, and in your
+  Vercel project env) to enable multi-party clearing in the app.
+
 ## Why Tempo
 
 | Primitive | How Cinch uses it |
 | --- | --- |
 | Atomic batched transactions | The whole cleared circle settles as one transaction — the foundation of trust-free netting. |
 | `transferWithMemo` | Each leg carries the obligation references it discharges, so settlement is also reconciliation. |
+| `transferFromWithMemo` + EIP-2612 `permit` | The clearing contract pulls each debtor's pre-authorized funds, memo attached, so several parties settle atomically from one call. |
 | Stablecoin-native fees | Fees are paid in the stablecoin being settled — no separate gas token to hold. |
 | Fee sponsorship | A circle's organiser can sponsor the clearing round. |
 | Enshrined stablecoin DEX | Obligations in different stablecoins net against one another. |

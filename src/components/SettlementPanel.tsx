@@ -15,6 +15,7 @@ import { partyName, toSettlementRecord, isCompleted } from "@/lib/circle";
 import type { ClearingResult } from "@/lib/types";
 import { buildSettlementBatch } from "@/lib/batch";
 import { useSettlement, useCinchAccount } from "@/lib/useSettlement";
+import { useIdentity } from "@/lib/useIdentity";
 import { MultiPartyClearing } from "./MultiPartyClearing";
 import { confirmSettlement, type ChainConfirmation } from "@/lib/chain";
 import { formatAmount, formatWithSymbol, formatPercent, shortAddress } from "@/lib/money";
@@ -43,8 +44,10 @@ export function SettlementPanel({
     reset,
   } = useSettlement();
   const { enabled: accountEnabled } = useCinchAccount();
-  // The self-custodial Cinch account is the signer.
-  const isConnected = accountEnabled;
+  // Identity can be a connected wallet or the Cinch account.
+  const { enabled: identityEnabled } = useIdentity();
+  // The signer is ready when either a wallet is connected or a Cinch key exists.
+  const isConnected = identityEnabled || accountEnabled;
   const [confirmation, setConfirmation] = useState<ChainConfirmation | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -452,7 +455,7 @@ export function SettlementPanel({
           </button>
           {!isConnected ? (
             <p className="faint" style={{ fontSize: "0.82rem", marginTop: 10, textAlign: "center" }}>
-              Create your Cinch account above to settle. Previewing the clearing needs nothing.
+              Connect your wallet or create a Cinch account above to settle. Previewing the clearing needs nothing.
             </p>
           ) : null}
           {error ? <p style={{ color: "var(--rose-400)", marginTop: 12, fontSize: "0.88rem" }}>{error}</p> : null}

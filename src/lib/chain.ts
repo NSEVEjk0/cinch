@@ -98,3 +98,23 @@ export async function readBalance(
   });
   return balance as bigint;
 }
+
+/**
+ * Read a token's symbol + decimals straight from Tempo — used when a person
+ * adds a custom asset to their wallet by contract address.
+ */
+export async function readTokenMeta(
+  address: `0x${string}`,
+  network: TempoNetwork = DEFAULT_NETWORK
+): Promise<{ symbol: string; decimals: number }> {
+  const client = publicClientFor(network);
+  const abi = [
+    { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
+    { type: "function", name: "decimals", stateMutability: "view", inputs: [], outputs: [{ type: "uint8" }] },
+  ] as const;
+  const [symbol, decimals] = await Promise.all([
+    client.readContract({ address, abi, functionName: "symbol" }),
+    client.readContract({ address, abi, functionName: "decimals" }),
+  ]);
+  return { symbol: String(symbol), decimals: Number(decimals) };
+}

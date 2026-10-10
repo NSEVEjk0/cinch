@@ -26,8 +26,10 @@
 import { Account, createClient, http as tempoHttp, withRelay } from "viem/tempo";
 import { tempo, tempoModerato } from "viem/chains";
 import { generateMnemonic, mnemonicToAccount, english, privateKeyToAccount } from "viem/accounts";
-import { toHex, createWalletClient, createPublicClient, http as viemHttp } from "viem";
+import { toHex, createWalletClient, createPublicClient, http as viemHttp, encodeFunctionData } from "viem";
 import type { TempoCall } from "./batch";
+import { TRANSFER_WITH_MEMO_ABI, encodeMemo } from "./batch";
+import type { Token } from "./types";
 import type { TempoNetwork } from "./tempo";
 import { resolveRefFromResult } from "./txref";
 
@@ -204,6 +206,33 @@ export async function accountSettle(
     ...(schedule?.validBefore ? { validBefore: BigInt(schedule.validBefore) } : {}),
   });
   return resolveRefFromResult(result);
+}
+
+/**
+ * Send a single token amount from the account to any address — the wallet's
+ * "Send" action. Goes out as a `transferWithMemo` so an optional note rides
+ * along on-chain, on the same sponsored atomic path as settlement. Returns the
+ * transaction reference.
+ */
+export async function accountSendToken(
+  network: TempoNetwork,
+  key: Hex,
+  token: Token,
+  to: Hex,
+  amount: bigint,
+  note?: string
+): Promise<string> {
+  const data = encodeFunctionData({
+    abi: TRANSFER_WITH_MEMO_ABI,
+    functionName: "transferWithMemo",
+    args: [to, amount, encodeMemo([note?.trim() || "cinch:send"])],
+  });
+  const call: TempoCall = {
+    to: token.address as Hex,
+    data,
+    meta: { recipient: to, amount, tokenSymbol: token.symbol, references: note ? [note] : [] },
+  };
+  return accountSettle(network, key, [call]);
 }
 
 /** Read the account's balance of a token, formatted. */

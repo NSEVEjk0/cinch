@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import { AccountModal } from "./AccountModal";
+import { WalletPanel } from "./WalletPanel";
 import { useCinchAccount } from "@/lib/useSettlement";
 import { forgetAccount, storedMnemonic, storedKey } from "@/lib/cinchAccount";
 import { shortAddress } from "@/lib/money";
@@ -28,6 +29,7 @@ export function AccountButton() {
   const { address: cinchAddress, hasKey } = useCinchAccount();
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [walletOpen, setWalletOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -165,6 +167,11 @@ export function AccountButton() {
             View on explorer ↗
           </a>
           {!isWallet ? (
+            <MenuItem onClick={() => { setMenuOpen(false); setWalletOpen(true); }}>
+              Wallet · balances &amp; send
+            </MenuItem>
+          ) : null}
+          {!isWallet ? (
             <MenuItem onClick={() => setRevealed({ phrase: storedMnemonic(), key: storedKey() })}>
               Reveal recovery phrase
             </MenuItem>
@@ -189,6 +196,16 @@ export function AccountButton() {
           <MenuItem onClick={logOut} danger>
             {isWallet ? "Disconnect" : "Log out"}
           </MenuItem>
+        </div>
+      ) : null}
+      {walletOpen ? (
+        <div className="modal-backdrop" onClick={() => setWalletOpen(false)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 460, maxHeight: "calc(100dvh - 40px)", overflowY: "auto" }}
+          >
+            <WalletPanel />
+          </div>
         </div>
       ) : null}
     </div>

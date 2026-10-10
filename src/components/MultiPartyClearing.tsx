@@ -16,7 +16,7 @@ import type { ClearingResult } from "@/lib/types";
 import { useClearing } from "@/lib/useClearing";
 import { confirmSettlement, type ChainConfirmation } from "@/lib/chain";
 import { useNetwork } from "@/lib/useNetwork";
-import { formatAmount, shortAddress } from "@/lib/money";
+import { shortAddress } from "@/lib/money";
 import { explorerTxUrl } from "@/lib/tempo";
 
 export function MultiPartyClearing({
@@ -33,7 +33,6 @@ export function MultiPartyClearing({
   const [confirmation, setConfirmation] = useState<ChainConfirmation | null>(null);
   const [confirming, setConfirming] = useState(false);
 
-  const token = circle.defaultToken;
   const name = (addr: string) => {
     const n = partyName(circle, addr);
     return n.startsWith("0x") ? shortAddress(n) : n;
@@ -186,7 +185,7 @@ export function MultiPartyClearing({
           >
             {c.status === "signing"
               ? "Sign in your wallet…"
-              : `Authorize your ${formatAmount(c.myDebit, token.decimals)} ${token.symbol}`}
+              : `Authorize your ${c.myDebitLabel}`}
           </button>
         ) : c.iAmPayer && c.iHaveAuthorized ? (
           <p className="mono" style={{ fontSize: "0.84rem", color: "var(--pos)", textAlign: "center", margin: "0 0 12px" }}>

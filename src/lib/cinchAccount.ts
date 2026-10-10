@@ -260,7 +260,31 @@ export async function readPermitContext(
   const client = clientFor(network, key) as unknown as {
     readContract: (args: unknown) => Promise<unknown>;
   };
+  return permitContextFrom(client, token, owner);
+}
 
+/**
+ * Keyless variant for the connect-wallet path: the payer signs with their own
+ * wallet, so there is no local key — read the permit context over a plain public
+ * client instead.
+ */
+export async function readPermitContextPublic(
+  network: TempoNetwork,
+  token: Hex,
+  owner: Hex
+): Promise<PermitReadContext> {
+  const client = createPublicClient({
+    chain: chainForNetwork(network),
+    transport: viemHttp(network.rpcUrl, { retryCount: 6, retryDelay: 400 }),
+  }) as unknown as { readContract: (args: unknown) => Promise<unknown> };
+  return permitContextFrom(client, token, owner);
+}
+
+async function permitContextFrom(
+  client: { readContract: (args: unknown) => Promise<unknown> },
+  token: Hex,
+  owner: Hex
+): Promise<PermitReadContext> {
   const nonce = (await client.readContract({
     address: token,
     abi: [

@@ -15,14 +15,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Hex } from "viem";
+import { useSignTypedData, useSendTransaction, useSwitchChain, useChainId, usePublicClient } from "wagmi";
 import type { ClearingResult } from "./types";
 import type { Circle } from "./circle";
 import { useNetwork } from "./useNetwork";
-import { useCinchAccount } from "./useSettlement";
+import { useIdentity } from "./useIdentity";
+import { formatAmount } from "./money";
 import {
   buildLegs,
   distinctPayers,
-  debitByPayerToken,
   roundIdFor,
   legsHashFor,
   clearingAddress,
@@ -37,6 +38,7 @@ import {
   storedKey,
   signTypedDataWithKey,
   readPermitContext,
+  readPermitContextPublic,
   accountSendCall,
 } from "./cinchAccount";
 import {
@@ -64,8 +66,15 @@ function deserializePermit(p: SerialPermit): Permit {
 
 export function useClearing(circle: Circle, result: ClearingResult) {
   const network = useNetwork();
-  const { address: me } = useCinchAccount();
+  const { address: me, kind } = useIdentity();
   const clearing = clearingAddress(network);
+
+  // wagmi transport for the connect-wallet path.
+  const { signTypedDataAsync } = useSignTypedData();
+  const { sendTransactionAsync } = useSendTransaction();
+  const { switchChainAsync } = useSwitchChain();
+  const chainId = useChainId();
+  const publicClient = usePublicClient({ chainId: network.chainId });
 
   const legs = useMemo(() => buildLegs(result.transfers), [result.transfers]);
   const payers = useMemo(() => distinctPayers(legs), [legs]);
@@ -108,17 +117,31 @@ export function useClearing(circle: Circle, result: ClearingResult) {
   const iHaveAuthorized = !!me && authorizedPayers.has(me.toLowerCase());
   const allAuthorized = payers.every((p) => authorizedPayers.has(p.toLowerCase()));
 
-  /** My net debit in the default token, for display. */
-  const myDebit = useMemo(() => {
-    if (!me) return 0n;
-    const key = `${me.toLowerCase()}:${circle.defaultToken.address.toLowerCase()}`;
-    return debitByPayerToken(legs).get(key) ?? 0n;
-  }, [me, legs, circle.defaultToken.address]);
+  /** My net debit, formatted per token (a payer may owe in several stablecoins). */
+  const myDebitLabel = useMemo(() => {
+    if (!me) return "";
+    const byToken = new Map<string, bigint>();
+    for (const l of legs) {
+      if (l.from.toLowerCase() !== me.toLowerCase()) continue;
+      byToken.set(l.token.toLowerCase(), (byToken.get(l.token.toLowerCase()) ?? 0n) + l.amount);
+    }
+    const parts: string[] = [];
+    for (const [addr, amount] of byToken) {
+      const t = network.tokens.find((x) => x.address.toLowerCase() === addr);
+      parts.push(t ? `${formatAmount(amount, t.decimals)} ${t.symbol}` : amount.toString());
+    }
+    return parts.join(" + ");
+  }, [me, legs, network.tokens]);
 
   /** The payer signs a permit per token + the Authorization, then publishes it. */
   const authorize = useCallback(async () => {
-    const key = storedKey();
-    if (!key || !me || !clearing) {
+    if (!me || !clearing) {
+      setError("Connect a wallet or create a Cinch account to authorize.");
+      setStatus("error");
+      return;
+    }
+    const key = kind === "cinch" ? storedKey() : null;
+    if (kind === "cinch" && !key) {
       setError("Create your Cinch account to authorize.");
       setStatus("error");
       return;
@@ -135,19 +158,24 @@ export function useClearing(circle: Circle, result: ClearingResult) {
         byToken.set(k, { token: l.token, value: (prev?.value ?? 0n) + l.amount });
       }
 
+      // Sign with the connected wallet (EIP-712) or the local Cinch key.
+      const sign = (td: Parameters<typeof signTypedDataWithKey>[1]) =>
+        key ? signTypedDataWithKey(key, td) : signTypedDataAsync(td as never);
+
       const deadline = BigInt(Math.floor(Date.now() / 1000) + DAY);
       const permits: SerialPermit[] = [];
       for (const { token, value } of byToken.values()) {
-        const ctx = await readPermitContext(network, key, token, me);
+        const ctx = key
+          ? await readPermitContext(network, key, token, me)
+          : await readPermitContextPublic(network, token, me);
         const td = permitTypedData(network, token, ctx, me, clearing, value, deadline);
-        const sig = await signTypedDataWithKey(key, td);
-        const { v, r, s } = splitSignature(sig);
+        const { v, r, s } = splitSignature((await sign(td)) as Hex);
         permits.push({ token, owner: me, value: value.toString(), deadline: deadline.toString(), v, r, s });
       }
 
       // Bind this payer to the exact leg set.
       const authTd = authorizationTypedData(network, clearing, roundId, legsHash);
-      const auth = await signTypedDataWithKey(key, authTd);
+      const auth = (await sign(authTd)) as Hex;
 
       const payload: StoredAuthorization = { payer: me, auth, permits };
       const ok = await postAuthorization(roundId, payload);
@@ -158,16 +186,15 @@ export function useClearing(circle: Circle, result: ClearingResult) {
       setStatus("idle");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Authorization failed.");
+      setError(err instanceof Error ? err.message.split("\n")[0].slice(0, 180) : "Authorization failed.");
       setStatus("error");
     }
-  }, [me, clearing, legs, network, roundId, legsHash, refresh]);
+  }, [me, kind, clearing, legs, network, roundId, legsHash, refresh, signTypedDataAsync]);
 
   /** The organiser submits the single atomic clear() once everyone has signed. */
   const clear = useCallback(async (): Promise<string | null> => {
-    const key = storedKey();
-    if (!key || !clearing) {
-      setError("Create your Cinch account to clear.");
+    if (!me || !clearing) {
+      setError("Connect a wallet or create a Cinch account to clear.");
       setStatus("error");
       return null;
     }
@@ -186,7 +213,22 @@ export function useClearing(circle: Circle, result: ClearingResult) {
         for (const p of a.permits) permits.push(deserializePermit(p));
       }
       const data = encodeClearCall(roundId, legs, permits, auths);
-      const ref = await accountSendCall(network, key, clearing, data);
+
+      let ref: string;
+      if (kind === "cinch") {
+        const key = storedKey();
+        if (!key) throw new Error("Create your Cinch account to clear.");
+        ref = await accountSendCall(network, key, clearing, data);
+      } else {
+        // Connect-wallet path: ensure the wallet is on Tempo, send, confirm.
+        if (chainId !== network.chainId) {
+          await switchChainAsync({ chainId: network.chainId });
+        }
+        const hash = await sendTransactionAsync({ to: clearing, data, chainId: network.chainId } as never);
+        const receipt = await publicClient!.waitForTransactionReceipt({ hash, timeout: 60_000 });
+        if (receipt.status !== "success") throw new Error("The clearing transaction reverted on-chain — nothing moved.");
+        ref = hash;
+      }
       setTxRef(ref);
       setStatus("sent");
       return ref;
@@ -195,19 +237,20 @@ export function useClearing(circle: Circle, result: ClearingResult) {
       setStatus("error");
       return null;
     }
-  }, [clearing, allAuthorized, collected, roundId, legs, network]);
+  }, [me, kind, clearing, allAuthorized, collected, roundId, legs, network, chainId, switchChainAsync, sendTransactionAsync, publicClient]);
 
   return {
     isMultiParty,
     configured: !!clearing,
     available,
     me,
+    kind,
     payers,
     iAmPayer,
     iHaveAuthorized,
     authorizedPayers,
     allAuthorized,
-    myDebit,
+    myDebitLabel,
     roundId,
     status,
     error,

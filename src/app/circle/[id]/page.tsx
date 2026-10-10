@@ -9,7 +9,7 @@ import { BalancesCard } from "@/components/BalancesCard";
 import { CinchAccountCard } from "@/components/CinchAccountCard";
 import { BackButton } from "@/components/BackButton";
 import { TokenSwitch } from "@/components/TokenSwitch";
-import { useCinchAccount } from "@/lib/useSettlement";
+import { useIdentity } from "@/lib/useIdentity";
 import {
   loadCircle,
   saveCircle,
@@ -95,6 +95,11 @@ export default function CirclePage() {
       if (stop) return;
       setLiveSync(true);
       await syncOnce();
+      // Auto-publish the local circle so a freshly created room is reachable by
+      // link immediately — without waiting for a manual "Share live link" click
+      // or an edit. syncOnce already merged any server copy in first, and the
+      // push is an idempotent upsert, so this is safe.
+      if (!stop && circleRef.current) void pushCircle(circleRef.current);
       timer = setInterval(syncOnce, 6000);
     })();
 
@@ -311,7 +316,11 @@ function AddObligation({
   const [earlyPayBy, setEarlyPayBy] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const token = circle.defaultToken;
+  const network = useNetwork();
+  const [tokenSym, setTokenSym] = useState(circle.defaultToken.symbol);
+  // Each obligation can be denominated in any Tempo stablecoin; they net
+  // per-token and settle together in one clear().
+  const token = network.tokens.find((t) => t.symbol === tokenSym) ?? circle.defaultToken;
 
   function resolveParty(input: string): { address: `0x${string}`; name: string } | null {
     const trimmed = input.trim();
@@ -404,13 +413,27 @@ function AddObligation({
       </datalist>
       <div className="g2" style={{ gap: 12, marginTop: 12 }}>
         <label className="stack">
-          <span className="label">Amount ({token.symbol})</span>
-          <input
-            className="field mono"
-            placeholder="100.00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
+          <span className="label">Amount</span>
+          <div className="row" style={{ gap: 8 }}>
+            <input
+              className="field mono"
+              style={{ flex: 1 }}
+              placeholder="100.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            <select
+              className="field"
+              style={{ width: "auto" }}
+              value={tokenSym}
+              onChange={(e) => setTokenSym(e.target.value)}
+              aria-label="Settlement stablecoin"
+            >
+              {network.tokens.map((t) => (
+                <option key={t.address} value={t.symbol}>{t.symbol}</option>
+              ))}
+            </select>
+          </div>
         </label>
         <label className="stack">
           <span className="label">For (reference)</span>
@@ -710,7 +733,7 @@ function ModeToggle({ mode, onChange }: { mode: NettingMode; onChange: (m: Netti
 /* -------------------------------------------------------------------------- */
 
 function AttestPanel({ circle, onAttest }: { circle: Circle; onAttest: (p: Party) => void }) {
-  const { address } = useCinchAccount();
+  const { address } = useIdentity();
   if (!address) return null;
 
   const me = circle.parties.find((p) => p.address.toLowerCase() === address.toLowerCase());

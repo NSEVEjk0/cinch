@@ -55,13 +55,20 @@ creditor. Who signs depends on how many distinct debtors there are:
 
 - **One payer** (a treasury, a payroll account, an organiser who already holds
   the funds) → that account signs one atomic Tempo batch. One signature, done.
-- **Several payers** (a genuine multilateral circle — a trip, a DAO and its
-  contributors) → no single key can move everyone's money, so Cinch uses the
-  **CinchClearing** contract (`contracts/CinchClearing.sol`). Each net debtor
+- **Several payers** (a genuine multilateral circle — a trading network, a DAO
+  and its contributors) → no single key can move everyone's money, so Cinch uses
+  the **CinchClearing** contract (`contracts/CinchClearing.sol`). Each net debtor
   signs two things off-chain, costing nothing and moving nothing:
   1. an **EIP-2612 `permit`** granting the contract an allowance for their net
      amount;
   2. an **EIP-712 `Authorization`** binding them to the exact, whole leg set.
+
+Each payer signs with **their own wallet** — connect an existing one
+(MetaMask/Rabby/EIP-6963) or use the built-in self-custodial Cinch account; both
+produce the same EIP-712 signatures. Obligations may be denominated in **several
+Tempo stablecoins** at once: the engine nets per token and a single `clear()`
+settles the mixed-token legs together (cross-stablecoin *conversion* via Tempo's
+enshrined DEX is on the roadmap).
 
   The organiser then submits a single `clear()` that pulls every leg
   debtor→creditor with `transferFromWithMemo`. Because each signature commits to

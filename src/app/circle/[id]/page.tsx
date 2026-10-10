@@ -42,6 +42,7 @@ import type { Obligation, NettingMode } from "@/lib/types";
 type ClaimState =
   | { kind: "none" }
   | { kind: "need-wallet"; name: string }
+  | { kind: "ready"; name: string; slotId: string; code: string }
   | { kind: "bound"; name: string }
   | { kind: "mismatch"; name: string }
   | { kind: "error"; message: string };
@@ -145,8 +146,8 @@ export default function CirclePage() {
   );
 
   // Resolve a pending invite claim: once an identity exists, verify the secret
-  // code against the slot's stored hash and bind the wallet to that slot. This
-  // is what makes a claim provably from someone the creator handed the link to.
+  // code against the slot's stored hash. We don't bind automatically — the
+  // person reviews the circle and presses Approve to lock their wallet in.
   useEffect(() => {
     if (!pendingClaim || !circle) return;
     const slot = circle.parties.find((p) => p.id === pendingClaim.slotId);
@@ -176,16 +177,41 @@ export default function CirclePage() {
         setPendingClaim(null);
         return;
       }
-      const bound: Party = { ...slot, address: identity.address!, claimedAt: new Date().toISOString() };
-      persist({ ...circle, parties: circle.parties.map((p) => (p.id === slot.id ? bound : p)) });
-      setClaimState({ kind: "bound", name: slot.name });
-      setPendingClaim(null);
+      // Verified — show the circle and offer an explicit Approve to lock in.
+      setClaimState({ kind: "ready", name: slot.name, slotId: slot.id, code: pendingClaim.code });
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingClaim, circle, identity.address]);
+
+  // Approve: bind this wallet to the slot and lock it in.
+  async function confirmClaim() {
+    if (claimState.kind !== "ready" || !circle || !identity.address) return;
+    const slot = circle.parties.find((p) => p.id === claimState.slotId);
+    if (!slot) {
+      setClaimState({ kind: "error", message: "That spot is no longer in the circle." });
+      setPendingClaim(null);
+      return;
+    }
+    if (slot.address) {
+      if (slot.address.toLowerCase() === identity.address.toLowerCase()) setClaimState({ kind: "bound", name: slot.name });
+      else setClaimState({ kind: "mismatch", name: slot.name });
+      setPendingClaim(null);
+      return;
+    }
+    const ok = slot.claimTokenHash ? await verifyClaim(claimState.code, slot.claimTokenHash) : false;
+    if (!ok) {
+      setClaimState({ kind: "error", message: "This invite link is invalid or has expired." });
+      setPendingClaim(null);
+      return;
+    }
+    const bound: Party = { ...slot, address: identity.address, claimedAt: new Date().toISOString() };
+    persist({ ...circle, parties: circle.parties.map((p) => (p.id === slot.id ? bound : p)) });
+    setClaimState({ kind: "bound", name: slot.name });
+    setPendingClaim(null);
+  }
 
   function persist(next: Circle) {
     setCircle(next);
@@ -297,7 +323,7 @@ export default function CirclePage() {
 
         <SavingsBar circle={circle} />
 
-        <ClaimBanner state={claimState} />
+        <ClaimBanner state={claimState} onApprove={confirmClaim} />
 
         <div className="split" style={{ gap: 28, alignItems: "start" }}>
           {/* ------------------------- left: editor ------------------------- */}
@@ -957,7 +983,7 @@ function InviteLink({ circle, circleId, member }: { circle: Circle; circleId: st
 }
 
 /** Banner shown to someone opening a per-member invite link. */
-function ClaimBanner({ state }: { state: ClaimState }) {
+function ClaimBanner({ state, onApprove }: { state: ClaimState; onApprove: () => void }) {
   if (state.kind === "none") return null;
 
   const tone =
@@ -967,11 +993,31 @@ function ClaimBanner({ state }: { state: ClaimState }) {
       ? { bg: "rgba(240,120,120,0.08)", color: "var(--rose-400)" }
       : { bg: "var(--surface-2)", color: "var(--text)" };
 
+  // The "ready to approve" state gets a review + an explicit lock-in button.
+  if (state.kind === "ready") {
+    return (
+      <div
+        className="card card-pad"
+        style={{ padding: "16px 18px", marginBottom: 20, background: "var(--accent-glow)", border: "1px solid var(--accent-line)" }}
+      >
+        <div className="between wrap" style={{ gap: 12 }}>
+          <span style={{ fontSize: "0.92rem", color: "var(--text)", minWidth: 0, flex: 1 }}>
+            You&apos;ve been invited as <strong>{state.name}</strong>. Review the circle below, then
+            approve to lock your wallet to this spot — only you can claim <strong>{state.name}</strong>.
+          </span>
+          <button className="btn btn-primary btn-sm" style={{ flexShrink: 0 }} onClick={onApprove}>
+            Approve &amp; claim my spot
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const text =
     state.kind === "need-wallet"
       ? `You've been invited as ${state.name}. Connect a wallet or create a Cinch account below to claim your spot.`
       : state.kind === "bound"
-      ? `You're confirmed as ${state.name} — your wallet is now bound to this slot.`
+      ? `✓ You're locked in as ${state.name} — your wallet is bound to this spot. Review what you owe below and approve the settlement.`
       : state.kind === "mismatch"
       ? `${state.name}'s spot is already claimed by a different wallet. If that's you, open the link from the device you first claimed on.`
       : state.message;

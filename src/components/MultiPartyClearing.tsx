@@ -32,6 +32,7 @@ export function MultiPartyClearing({
   const c = useClearing(circle, result);
   const [confirmation, setConfirmation] = useState<ChainConfirmation | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [signOpen, setSignOpen] = useState(false);
 
   const name = (addr: string) => {
     const n = partyName(circle, addr);
@@ -131,6 +132,7 @@ export function MultiPartyClearing({
   }
 
   return (
+    <>
     <div className="card" style={{ overflow: "hidden" }}>
       <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--hairline)" }}>
         <span className="label">Multi-party clearing</span>
@@ -180,12 +182,12 @@ export function MultiPartyClearing({
           <button
             className="btn btn-primary"
             style={{ width: "100%" }}
-            onClick={() => c.authorize()}
+            onClick={() => setSignOpen(true)}
             disabled={c.status === "signing"}
           >
             {c.status === "signing"
               ? "Sign in your wallet…"
-              : `Authorize your ${c.myDebitLabel}`}
+              : `Review & authorize your ${c.myDebitLabel}`}
           </button>
         ) : c.iAmPayer && c.iHaveAuthorized ? (
           <p className="mono" style={{ fontSize: "0.84rem", color: "var(--pos)", textAlign: "center", margin: "0 0 12px" }}>
@@ -220,6 +222,41 @@ export function MultiPartyClearing({
         </p>
       </div>
     </div>
+
+    {/* Confirmation before signing — states exactly what will leave the wallet. */}
+    {signOpen ? (
+      <div className="modal-backdrop" onClick={() => setSignOpen(false)}>
+        <div className="modal card" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Confirm authorization">
+          <h3 className="display" style={{ fontSize: "1.25rem", margin: "0 0 10px" }}>Approve this settlement</h3>
+          <p className="muted" style={{ margin: "0 0 14px", lineHeight: 1.6 }}>
+            You&apos;re authorizing funds to leave your wallet to settle{" "}
+            <strong style={{ color: "var(--text)" }}>{circle.name}</strong>.
+          </p>
+          <div
+            className="between"
+            style={{ padding: "14px 16px", border: "1px solid var(--line)", borderRadius: "var(--r-sm)", background: "var(--surface-2)", marginBottom: 14 }}
+          >
+            <span className="faint">Leaves your wallet</span>
+            <span className="mono tnum" style={{ fontWeight: 600, fontSize: "1.05rem" }}>{c.myDebitLabel}</span>
+          </div>
+          <p className="faint" style={{ fontSize: "0.82rem", margin: "0 0 18px", lineHeight: 1.6 }}>
+            This is a gasless signature — nothing moves now. The amount above leaves your wallet only
+            once every payer has signed and the circle clears, all in one atomic transaction.
+          </p>
+          <div className="row" style={{ gap: 8 }}>
+            <button
+              className="btn btn-primary"
+              style={{ flex: 1 }}
+              onClick={() => { setSignOpen(false); void c.authorize(); }}
+            >
+              Sign &amp; approve
+            </button>
+            <button className="btn btn-ghost" onClick={() => setSignOpen(false)}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }
 

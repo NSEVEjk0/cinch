@@ -4,8 +4,9 @@
  * WalletPanel — the Cinch account as a wallet.
  *
  * One place to see balances across every asset, add a token by address, and
- * send or receive. The account is self-custodial and browser-local, so this is
- * the whole wallet surface: no custody, no server.
+ * send or receive — for the self-custodial Cinch account Cinch generates. (A
+ * connected external wallet already has its own send/receive, so this is only
+ * for the Cinch account.)
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -60,7 +61,7 @@ export function WalletPanel() {
   if (!hasKey || !address || !key) {
     return (
       <div className="card card-pad">
-        <span className="label">Your wallet</span>
+        <span className="label">Your Cinch wallet</span>
         <p className="faint" style={{ margin: "10px 0 16px", fontSize: "0.9rem", lineHeight: 1.55 }}>
           Create a Cinch account to get a self-custodial Tempo wallet — hold any asset, send and
           receive, and settle circles. It&apos;s a 12-word phrase, no extension.

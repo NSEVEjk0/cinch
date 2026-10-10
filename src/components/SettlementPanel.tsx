@@ -232,11 +232,11 @@ export function SettlementPanel({
               {result.transfers.map((t, i) => {
                 const settled = confirmation?.confirmed;
                 return (
-                  <div key={i} className="between" style={{ padding: "10px 16px", borderBottom: "1px solid var(--hairline)" }}>
-                    <span style={{ fontSize: "0.86rem" }}>
+                  <div key={i} className="between" style={{ padding: "10px 16px", borderBottom: "1px solid var(--hairline)", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: "0.86rem", minWidth: 0, overflowWrap: "anywhere" }}>
                       {name(t.from)} <span className="faint">→</span> {name(t.to)}
                     </span>
-                    <span className="row" style={{ gap: 10 }}>
+                    <span className="row" style={{ gap: 10, flexShrink: 0 }}>
                       <span className="mono tnum" style={{ fontSize: "0.84rem" }}>{formatWithSymbol(t.amount, t.token)}</span>
                       {settled ? (
                         <span className="mono" style={{ fontSize: "0.74rem", color: "var(--pos)" }}>✓ settled</span>
@@ -354,18 +354,18 @@ export function SettlementPanel({
           <div className="stack" style={{ gap: 6 }}>
             <span className="label" style={{ color: "var(--neg)" }}>Pay in</span>
             {debtors.map((p) => (
-              <div key={p.party} className="between mono" style={{ fontSize: "0.84rem" }}>
-                <span>{name(p.party)}</span>
-                <span className="tnum">{formatAmount(-p.net, token.decimals)}</span>
+              <div key={p.party} className="between mono" style={{ fontSize: "0.84rem", gap: 10 }}>
+                <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{name(p.party)}</span>
+                <span className="tnum" style={{ flexShrink: 0, whiteSpace: "nowrap" }}>{formatAmount(-p.net, token.decimals)}</span>
               </div>
             ))}
           </div>
           <div className="stack" style={{ gap: 6 }}>
             <span className="label" style={{ color: "var(--accent)" }}>Receive</span>
             {creditors.map((p) => (
-              <div key={p.party} className="between mono" style={{ fontSize: "0.84rem" }}>
-                <span>{name(p.party)}</span>
-                <span className="tnum">{formatAmount(p.net, token.decimals)}</span>
+              <div key={p.party} className="between mono" style={{ fontSize: "0.84rem", gap: 10 }}>
+                <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{name(p.party)}</span>
+                <span className="tnum" style={{ flexShrink: 0, whiteSpace: "nowrap" }}>{formatAmount(p.net, token.decimals)}</span>
               </div>
             ))}
           </div>

@@ -607,18 +607,19 @@ function ObligationList({
               padding: "14px 22px",
               borderBottom: "1px solid var(--line)",
               opacity: o.disputed ? 0.5 : 1,
+              alignItems: "flex-start",
             }}
           >
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontSize: "0.95rem" }}>
+                <span style={{ fontSize: "0.95rem", overflowWrap: "anywhere" }}>
                   {partyNameShort(circle, o.debtor)}
                   <span className="faint" style={{ margin: "0 7px" }}>→</span>
                   {partyNameShort(circle, o.creditor)}
                 </span>
                 {o.disputed ? <span className="chip" style={{ color: "var(--amber-400)" }}>disputed</span> : null}
               </div>
-              <div className="faint" style={{ fontSize: "0.8rem", marginTop: 3 }}>
+              <div className="faint" style={{ fontSize: "0.8rem", marginTop: 3, overflowWrap: "anywhere" }}>
                 {o.reference}
                 {o.disputed && o.disputeReason ? (
                   <span style={{ color: "var(--amber-400)" }}> · {o.disputeReason}</span>
@@ -626,8 +627,8 @@ function ObligationList({
                 <ObligationTerms o={o} />
               </div>
             </div>
-            <div className="row" style={{ gap: 14 }}>
-              <span className="mono tnum" style={{ fontSize: "0.95rem" }}>
+            <div className="row" style={{ gap: 10, flexShrink: 0 }}>
+              <span className="mono tnum" style={{ fontSize: "0.95rem", whiteSpace: "nowrap" }}>
                 {formatWithSymbol(o.amount, o.token)}
               </span>
               <button
@@ -866,11 +867,12 @@ function MembersPanel({
                 borderRadius: "var(--radius-sm)",
                 border: "1px solid var(--line)",
                 background: "var(--surface-2)",
+                alignItems: "flex-start",
               }}
             >
-              <div style={{ minWidth: 0 }}>
-                <div className="row" style={{ gap: 8 }}>
-                  <span style={{ fontWeight: 540, fontSize: "0.92rem" }}>{p.name}</span>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 540, fontSize: "0.92rem", overflowWrap: "anywhere" }}>{p.name}</span>
                   {isClaimed(p) ? (
                     <span className="chip chip-mint">claimed</span>
                   ) : (
@@ -883,7 +885,9 @@ function MembersPanel({
                   </div>
                 ) : null}
               </div>
-              <InviteLink circle={circle} circleId={circleId} member={p} />
+              <div style={{ flexShrink: 0 }}>
+                <InviteLink circle={circle} circleId={circleId} member={p} />
+              </div>
             </div>
           ))}
         </div>

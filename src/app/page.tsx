@@ -156,7 +156,7 @@ export default function HomePage() {
       </section>
 
       {/* ---------------------------- why tempo ----------------------------- */}
-      <section className="shell section" style={{ paddingTop: 0 }}>
+      <section className="shell section" style={{ paddingTop: 64, borderTop: "1px solid var(--hairline)" }}>
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ padding: "34px 34px 26px", borderBottom: "1px solid var(--hairline)" }}>
             <p className="eyebrow" style={{ marginBottom: 16 }}>

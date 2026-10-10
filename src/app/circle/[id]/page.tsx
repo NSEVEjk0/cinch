@@ -602,16 +602,15 @@ function ObligationList({
         {circle.obligations.map((o) => (
           <div
             key={o.id}
-            className="between"
             style={{
               padding: "14px 22px",
               borderBottom: "1px solid var(--line)",
               opacity: o.disputed ? 0.5 : 1,
-              alignItems: "flex-start",
             }}
           >
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+            {/* line 1: parties (wrap) + amount */}
+            <div className="between" style={{ gap: 12, alignItems: "flex-start" }}>
+              <div className="row" style={{ gap: 8, flexWrap: "wrap", minWidth: 0, flex: 1 }}>
                 <span style={{ fontSize: "0.95rem", overflowWrap: "anywhere" }}>
                   {partyNameShort(circle, o.debtor)}
                   <span className="faint" style={{ margin: "0 7px" }}>→</span>
@@ -619,40 +618,43 @@ function ObligationList({
                 </span>
                 {o.disputed ? <span className="chip" style={{ color: "var(--amber-400)" }}>disputed</span> : null}
               </div>
-              <div className="faint" style={{ fontSize: "0.8rem", marginTop: 3, overflowWrap: "anywhere" }}>
+              <span className="mono tnum" style={{ fontSize: "0.95rem", whiteSpace: "nowrap", flexShrink: 0 }}>
+                {formatWithSymbol(o.amount, o.token)}
+              </span>
+            </div>
+            {/* line 2: reference + actions */}
+            <div className="between" style={{ gap: 12, marginTop: 6, alignItems: "center" }}>
+              <div className="faint" style={{ fontSize: "0.8rem", minWidth: 0, flex: 1, overflowWrap: "anywhere" }}>
                 {o.reference}
                 {o.disputed && o.disputeReason ? (
                   <span style={{ color: "var(--amber-400)" }}> · {o.disputeReason}</span>
                 ) : null}
                 <ObligationTerms o={o} />
               </div>
-            </div>
-            <div className="row" style={{ gap: 10, flexShrink: 0 }}>
-              <span className="mono tnum" style={{ fontSize: "0.95rem", whiteSpace: "nowrap" }}>
-                {formatWithSymbol(o.amount, o.token)}
-              </span>
-              <button
-                className="btn btn-quiet btn-sm"
-                style={{ padding: "4px 8px", color: o.disputed ? "var(--mint-400)" : "var(--amber-400)" }}
-                onClick={() => {
-                  if (o.disputed) {
-                    onToggleDispute(o.id);
-                  } else {
-                    const reason = window.prompt("Why is this disputed? (optional)") ?? "";
-                    onToggleDispute(o.id, reason.trim() || undefined);
-                  }
-                }}
-                title={o.disputed ? "Include in the round" : "Hold out of the round"}
-              >
-                {o.disputed ? "restore" : "dispute"}
-              </button>
-              <button
-                className="btn btn-quiet btn-sm"
-                style={{ padding: "4px 8px", color: "var(--text-faint)" }}
-                onClick={() => onRemove(o.id)}
-              >
-                ✕
-              </button>
+              <div className="row" style={{ gap: 4, flexShrink: 0 }}>
+                <button
+                  className="btn btn-quiet btn-sm"
+                  style={{ padding: "4px 8px", color: o.disputed ? "var(--mint-400)" : "var(--amber-400)" }}
+                  onClick={() => {
+                    if (o.disputed) {
+                      onToggleDispute(o.id);
+                    } else {
+                      const reason = window.prompt("Why is this disputed? (optional)") ?? "";
+                      onToggleDispute(o.id, reason.trim() || undefined);
+                    }
+                  }}
+                  title={o.disputed ? "Include in the round" : "Hold out of the round"}
+                >
+                  {o.disputed ? "restore" : "dispute"}
+                </button>
+                <button
+                  className="btn btn-quiet btn-sm"
+                  style={{ padding: "4px 8px", color: "var(--text-faint)" }}
+                  onClick={() => onRemove(o.id)}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           </div>
         ))}

@@ -612,6 +612,13 @@ h1.display {
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
 }
+/* Wrap a wide table so it scrolls on narrow screens instead of being clipped
+   by the body's overflow-x:hidden. */
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
 /* ------------------------------ motion ----------------------------------- */
 
@@ -710,6 +717,59 @@ h1.display {
   .faq-row {
     grid-template-columns: minmax(0, 1fr) !important;
     gap: 6px !important;
+  }
+  /* Tighter chrome so content isn't boxed into a sliver. */
+  .card-pad {
+    padding: 17px;
+  }
+  .section {
+    padding: 56px 0;
+  }
+  /* iOS zooms into any input whose text is < 16px on focus — pin to 16px so
+     tapping a field doesn't jerk the whole page. */
+  .field,
+  .field.mono {
+    font-size: 16px;
+  }
+  /* Denser settlement tables so four columns fit a phone. */
+  .dtable {
+    font-size: 0.82rem;
+  }
+  .dtable th,
+  .dtable td {
+    padding: 9px 10px;
+  }
+  .btn-lg {
+    padding: 11px 18px;
+    font-size: 0.94rem;
+  }
+  /* The modal should use the full width of a phone. */
+  .modal-backdrop {
+    padding: 12px;
+  }
+  .modal {
+    padding: 18px;
+  }
+}
+
+/* Declutter the header on small phones: the network toggle defaults to testnet
+   and crowds the account button, so drop it from the bar below this width. */
+@media (max-width: 560px) {
+  .net-switch-wrap {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  /* Keep the big gradient headlines from overflowing narrow phones. */
+  h1.display {
+    font-size: clamp(2.1rem, 9vw, 2.9rem) !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .shell {
+    padding: 0 14px;
   }
 }
 

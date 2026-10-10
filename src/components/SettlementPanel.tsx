@@ -306,6 +306,7 @@ export function SettlementPanel({
 
       {/* transfers — Ramp-style review table */}
       {result.transfers.length > 0 ? (
+        <div className="table-scroll">
         <table className="dtable">
           <thead>
             <tr>
@@ -334,6 +335,7 @@ export function SettlementPanel({
             ))}
           </tbody>
         </table>
+        </div>
       ) : (
         <div style={{ padding: "16px 22px", background: "var(--accent-glow)" }}>
           <p className="mono" style={{ margin: 0, color: "var(--accent)", fontSize: "0.88rem" }}>

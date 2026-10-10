@@ -157,13 +157,20 @@ function chainForNetwork(network: TempoNetwork) {
 
 /** Is a keyless fee sponsor configured for this network (so a send costs nothing extra)? */
 export function accountSponsors(network: TempoNetwork): boolean {
-  // The Moderato testnet runs a public keyless relay/sponsor.
-  return network.key === "testnet";
+  // A send is sponsored only where a real fee-payer relay is configured.
+  return !!network.sponsorUrl;
 }
 
 function clientFor(network: TempoNetwork, key: Hex) {
   const base = tempoHttp(network.rpcUrl);
-  const transport = accountSponsors(network) ? withRelay(base, base) : base;
+  // The relay co-signs the fee and broadcasts (policy "sign-and-broadcast"), so
+  // the account pays no gas. The default "sign-only" policy instead asks the
+  // relay to `eth_signRawTransaction` — which Tempo's endpoints don't expose —
+  // so it must be set explicitly or sponsored sends fail with a bogus
+  // "eth_sendRawTransactionSync does not exist" error.
+  const transport = network.sponsorUrl
+    ? withRelay(base, tempoHttp(network.sponsorUrl), { policy: "sign-and-broadcast" })
+    : base;
   return createClient({
     account: Account.fromSecp256k1(key),
     chain: chainForNetwork(network),

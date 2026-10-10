@@ -88,9 +88,9 @@ export default function CirclePage() {
         setCircle(c);
       }
     } else if (!c) {
-      // No local copy and no inline circle — a bare invite link relies on live
-      // sync to pull the room in (handled by the sync effect below).
-      if (!claim) setNotFound(true);
+      // No local copy and no inline circle — rely on live sync to pull the room
+      // in. Stay in the loading state; the sync effect flags not-found only once
+      // it has actually checked, so switching browsers doesn't flash an error.
     } else {
       setCircle(c);
     }
@@ -107,29 +107,42 @@ export default function CirclePage() {
     let stop = false;
     let timer: ReturnType<typeof setInterval> | null = null;
 
-    async function syncOnce() {
+    // Returns whether we have a circle after this attempt (found on the server
+    // or already held locally) — so the caller can decide not-found correctly
+    // without racing React's async state update.
+    async function syncOnce(): Promise<boolean> {
       const incoming = await pullCircle(id);
-      if (stop || !incoming) return;
+      if (stop || !incoming) return !!circleRef.current;
       const local = circleRef.current;
       const merged = local ? mergeCircle(local, incoming) : incoming;
       // Only commit if something actually changed, to avoid render churn.
       if (!local || circleSignature(merged) !== circleSignature(local)) {
         saveCircle(merged);
         setCircle(merged);
-        if (notFound) setNotFound(false);
+        setNotFound(false);
       }
+      return true;
     }
 
     (async () => {
-      if (!(await syncAvailable())) return;
+      const available = await syncAvailable();
       if (stop) return;
+      if (!available) {
+        // No server to pull from: if there's no local copy, it genuinely isn't here.
+        if (!circleRef.current) setNotFound(true);
+        return;
+      }
       setLiveSync(true);
-      await syncOnce();
-      // Auto-publish the local circle so a freshly created room is reachable by
-      // link immediately — without waiting for a manual "Share live link" click
-      // or an edit. syncOnce already merged any server copy in first, and the
-      // push is an idempotent upsert, so this is safe.
-      if (!stop && circleRef.current) void pushCircle(circleRef.current);
+      const haveCircle = await syncOnce();
+      if (stop) return;
+      if (!haveCircle) {
+        // Not local and not on the server either — now it's genuinely not here.
+        setNotFound(true);
+      } else if (circleRef.current) {
+        // Auto-publish the local circle so a freshly created room is reachable
+        // by link immediately. Idempotent upsert, so this is safe.
+        void pushCircle(circleRef.current);
+      }
       timer = setInterval(syncOnce, 6000);
     })();
 
@@ -252,6 +265,17 @@ export default function CirclePage() {
     if (liveSync) void pushCircle(next);
   }
 
+  // Pull the latest shared copy on demand (the "Check claims" button) so the
+  // creator can see who has claimed without waiting for the 6s poll.
+  async function checkClaims() {
+    const incoming = await pullCircle(id);
+    if (!incoming) return;
+    const local = circleRef.current;
+    const merged = local ? mergeCircle(local, incoming) : incoming;
+    saveCircle(merged);
+    setCircle(merged);
+  }
+
   function changeToken(token: Circle["defaultToken"]) {
     if (!circle) return;
     persist({ ...circle, defaultToken: token });
@@ -366,6 +390,8 @@ export default function CirclePage() {
               onAddParty={addParty}
               canClaimAsMe={!!identity.address && !circle.parties.some((p) => p.address?.toLowerCase() === identity.address!.toLowerCase())}
               onClaimAs={claimSlotAsMe}
+              onCheck={checkClaims}
+              liveSync={liveSync}
             />
             <AddObligation circle={circle} onAddParty={addParty} onAdd={addObligation} />
             <ObligationList
@@ -882,16 +908,24 @@ function MembersPanel({
   onAddParty,
   canClaimAsMe,
   onClaimAs,
+  onCheck,
+  liveSync,
 }: {
   circle: Circle;
   circleId: string;
   onAddParty: (p: Party) => void;
   canClaimAsMe: boolean;
   onClaimAs: (slotId: string) => void;
+  onCheck: () => Promise<void>;
+  liveSync: boolean;
 }) {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  const claimed = circle.parties.filter((p) => p.address).length;
+  const total = circle.parties.length;
 
   async function add() {
     const nm = name.trim();
@@ -924,6 +958,27 @@ function MembersPanel({
         Add each party by name. Cinch mints a private invite link per member — whoever opens theirs
         and connects a wallet claims that slot, binding their address to the name.
       </p>
+
+      {total > 0 ? (
+        <div
+          className="between"
+          style={{ gap: 10, marginBottom: 14, padding: "10px 14px", borderRadius: "var(--r-sm)", border: "1px solid var(--line)", background: "var(--surface-2)" }}
+        >
+          <span style={{ fontSize: "0.88rem" }}>
+            <strong className="mono" style={{ color: claimed === total ? "var(--mint-400)" : "var(--text)" }}>{claimed}</strong>
+            <span className="faint"> / {total} claimed</span>
+            {claimed === total ? <span className="chip chip-mint" style={{ marginLeft: 8 }}>all in</span> : null}
+          </span>
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={checking || !liveSync}
+            title={liveSync ? "Pull the latest and see who has claimed" : "Live sync isn't on, so claims can't be checked remotely"}
+            onClick={async () => { setChecking(true); try { await onCheck(); } finally { setChecking(false); } }}
+          >
+            {checking ? "Checking…" : "Check claims"}
+          </button>
+        </div>
+      ) : null}
 
       {circle.parties.length > 0 ? (
         <div className="stack" style={{ gap: 8, marginBottom: 16 }}>
@@ -1001,13 +1056,9 @@ function InviteLink({ circle, circleId, member }: { circle: Circle; circleId: st
   }
 
   const code = recallCode(circleId, member.id);
-  if (!code) {
-    return (
-      <span className="faint" style={{ fontSize: "0.72rem", textAlign: "right", maxWidth: 150 }}>
-        invite link is on the creator&apos;s device
-      </span>
-    );
-  }
+  // Only the device that minted the slot holds its code (and so can build the
+  // link). Elsewhere, show nothing — the status chip already says it's pending.
+  if (!code) return null;
 
   async function copy() {
     if (typeof window === "undefined") return;

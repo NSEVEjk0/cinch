@@ -168,6 +168,13 @@ export default function CirclePage() {
       setPendingClaim(null);
       return;
     }
+    // One spot per wallet: if this wallet already claimed another slot, refuse.
+    const mine = circle.parties.find((p) => p.address?.toLowerCase() === addr);
+    if (mine && mine.id !== slot.id) {
+      setClaimState({ kind: "error", message: `This wallet already claimed ${mine.name} in this circle — one spot per wallet.` });
+      setPendingClaim(null);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const ok = slot.claimTokenHash ? await verifyClaim(pendingClaim.code, slot.claimTokenHash) : false;
@@ -201,6 +208,12 @@ export default function CirclePage() {
       setPendingClaim(null);
       return;
     }
+    const mine = circle.parties.find((p) => p.address?.toLowerCase() === identity.address!.toLowerCase());
+    if (mine && mine.id !== slot.id) {
+      setClaimState({ kind: "error", message: `This wallet already claimed ${mine.name} in this circle — one spot per wallet.` });
+      setPendingClaim(null);
+      return;
+    }
     const ok = slot.claimTokenHash ? await verifyClaim(claimState.code, slot.claimTokenHash) : false;
     if (!ok) {
       setClaimState({ kind: "error", message: "This invite link is invalid or has expired." });
@@ -211,6 +224,25 @@ export default function CirclePage() {
     persist({ ...circle, parties: circle.parties.map((p) => (p.id === slot.id ? bound : p)) });
     setClaimState({ kind: "bound", name: slot.name });
     setPendingClaim(null);
+  }
+
+  // "Claim as me": the logged-in user binds their own wallet to a slot directly
+  // (no link roundtrip) — used by the creator to take their own spot. One per
+  // wallet: refuses if this wallet already holds a slot in the circle.
+  async function claimSlotAsMe(slotId: string) {
+    if (!circle || !identity.address) return;
+    const addr = identity.address.toLowerCase();
+    if (circle.parties.some((p) => p.address?.toLowerCase() === addr)) return; // already claimed one
+    const slot = circle.parties.find((p) => p.id === slotId);
+    if (!slot || slot.address) return;
+    // We hold the code locally for slots minted on this device — verify if so.
+    const code = recallCode(circle.id, slotId);
+    if (code && slot.claimTokenHash) {
+      const ok = await verifyClaim(code, slot.claimTokenHash);
+      if (!ok) return;
+    }
+    const bound: Party = { ...slot, address: identity.address, claimedAt: new Date().toISOString() };
+    persist({ ...circle, parties: circle.parties.map((p) => (p.id === slotId ? bound : p)) });
   }
 
   function persist(next: Circle) {
@@ -328,7 +360,13 @@ export default function CirclePage() {
         <div className="split" style={{ gap: 28, alignItems: "start" }}>
           {/* ------------------------- left: editor ------------------------- */}
           <div className="stack" style={{ gap: 20 }}>
-            <MembersPanel circle={circle} circleId={id} onAddParty={addParty} />
+            <MembersPanel
+              circle={circle}
+              circleId={id}
+              onAddParty={addParty}
+              canClaimAsMe={!!identity.address && !circle.parties.some((p) => p.address?.toLowerCase() === identity.address!.toLowerCase())}
+              onClaimAs={claimSlotAsMe}
+            />
             <AddObligation circle={circle} onAddParty={addParty} onAdd={addObligation} />
             <ObligationList
               circle={circle}
@@ -842,10 +880,14 @@ function MembersPanel({
   circle,
   circleId,
   onAddParty,
+  canClaimAsMe,
+  onClaimAs,
 }: {
   circle: Circle;
   circleId: string;
   onAddParty: (p: Party) => void;
+  canClaimAsMe: boolean;
+  onClaimAs: (slotId: string) => void;
 }) {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -914,7 +956,14 @@ function MembersPanel({
                 ) : null}
               </div>
               <div style={{ flexShrink: 0 }}>
+              <div className="row" style={{ gap: 6, flexShrink: 0 }}>
+                {!p.address && canClaimAsMe ? (
+                  <button className="btn btn-ghost btn-sm" style={{ whiteSpace: "nowrap" }} onClick={() => onClaimAs(p.id)}>
+                    Claim as me
+                  </button>
+                ) : null}
                 <InviteLink circle={circle} circleId={circleId} member={p} />
+              </div>
               </div>
             </div>
           ))}

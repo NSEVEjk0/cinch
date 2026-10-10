@@ -36,12 +36,12 @@ export function BalancesCard({ circle, result }: { circle: Circle; result: Clear
     setErr(null);
     try {
       const entries = await Promise.all(
-        circle.parties.map(async (p) => {
+        circle.parties.filter((p) => p.address).map(async (p) => {
           try {
-            const bal = await readBalance(p.address, token.address, network);
-            return [p.address.toLowerCase(), bal] as const;
+            const bal = await readBalance(p.address!, token.address, network);
+            return [p.address!.toLowerCase(), bal] as const;
           } catch {
-            return [p.address.toLowerCase(), -1n] as const; // unreadable
+            return [p.address!.toLowerCase(), -1n] as const; // unreadable
           }
         })
       );
@@ -86,13 +86,13 @@ export function BalancesCard({ circle, result }: { circle: Circle; result: Clear
 
       {balances ? (
         <div>
-          {circle.parties.map((p) => {
-            const bal = balances[p.address.toLowerCase()] ?? 0n;
-            const net = netByParty.get(p.address.toLowerCase()) ?? 0n;
+          {circle.parties.filter((p) => p.address).map((p) => {
+            const bal = balances[p.address!.toLowerCase()] ?? 0n;
+            const net = netByParty.get(p.address!.toLowerCase()) ?? 0n;
             const mustFund = net < 0n ? -net : 0n;
             const unreadable = bal < 0n;
             const short = !unreadable && mustFund > 0n && bal < mustFund;
-            const isMe = address && p.address.toLowerCase() === address.toLowerCase();
+            const isMe = address && p.address!.toLowerCase() === address.toLowerCase();
             return (
               <div
                 key={p.address}
@@ -100,7 +100,7 @@ export function BalancesCard({ circle, result }: { circle: Circle; result: Clear
                 style={{ padding: "11px 22px", borderBottom: "1px solid var(--hairline)" }}
               >
                 <span style={{ fontSize: "0.9rem" }}>
-                  {name(p.address)}
+                  {name(p.address!)}
                   {isMe ? <span className="chip chip-mint" style={{ marginLeft: 8 }}>you</span> : null}
                   {short ? (
                     <span className="chip" style={{ marginLeft: 8, color: "var(--warn)" }}>underfunded</span>

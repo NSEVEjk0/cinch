@@ -9,7 +9,7 @@
 
 import type { Obligation } from "./types";
 import { PATH_USD } from "./tempo";
-import type { Circle } from "./circle";
+import { claimedParty, type Circle } from "./circle";
 
 const addr = (hex: string) => `0x${hex.padStart(40, "0")}` as `0x${string}`;
 
@@ -112,7 +112,7 @@ export function scenarioToCircle(scenario: DemoScenario, id: string): Circle {
   return {
     id,
     name: scenario.title,
-    parties: scenario.parties.map((p) => ({ address: p.address, name: p.name })),
+    parties: scenario.parties.map((p) => claimedParty(p.address, p.name)),
     obligations: scenarioObligations(scenario),
     cadence: "once",
     defaultToken: PATH_USD,

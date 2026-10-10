@@ -20,6 +20,7 @@ import { MultiPartyClearing } from "./MultiPartyClearing";
 import { confirmSettlement, type ChainConfirmation } from "@/lib/chain";
 import { formatAmount, formatWithSymbol, formatPercent, shortAddress } from "@/lib/money";
 import { explorerTxUrl } from "@/lib/tempo";
+import { openCertificate } from "@/lib/certificate";
 import { useNetwork } from "@/lib/useNetwork";
 
 export function SettlementPanel({
@@ -112,6 +113,21 @@ export function SettlementPanel({
   async function onSettleSequentially() {
     const ref = await settleSequentially(batch);
     await record(ref, ref ? [ref, ...txRefs] : txRefs, false);
+  }
+
+  // Open a printable settlement receipt (save-as-PDF) for what just cleared —
+  // the by-name transfer assignment plus the on-chain reference.
+  function downloadReceipt() {
+    const rec = toSettlementRecord({
+      transfers: result.transfers,
+      txRefs: [txRef, ...txRefs].filter(Boolean) as string[],
+      grossByToken: result.stats.grossByToken,
+      nettedByToken: result.stats.nettedByToken,
+      compressionRatio: result.stats.compressionRatio,
+      obligationCount: result.stats.obligationCount,
+      atomic: !batchUnsupported,
+    });
+    openCertificate(circle, rec, network);
   }
 
   // A one-off circle that has already been cleared is done — show a persistent
@@ -255,6 +271,16 @@ export function SettlementPanel({
               Start the next round →
             </button>
           )}
+          {batch.length > 0 ? (
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ marginLeft: 10 }}
+              onClick={downloadReceipt}
+              title="Open a printable receipt showing how the money moved — save it as PDF"
+            >
+              Download receipt (PDF) →
+            </button>
+          ) : null}
         </div>
       </div>
     );

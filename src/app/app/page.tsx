@@ -12,6 +12,7 @@ import {
   deleteCircle,
   newId,
   isCompleted,
+  claimedParty,
   type Circle,
 } from "@/lib/circle";
 import { SCENARIOS, scenarioToCircle } from "@/lib/scenarios";
@@ -60,7 +61,7 @@ export default function AppPage() {
       return;
     }
     const circle = createCircle({ name: name.trim() || "Imported circle", cadence, defaultToken: token });
-    circle.parties = parsed.parties.map((p) => ({ address: p.address, name: p.name }));
+    circle.parties = parsed.parties.map((p) => claimedParty(p.address, p.name));
     circle.obligations = parsed.obligations;
     saveCircle(circle);
     router.push(`/circle/${circle.id}`);

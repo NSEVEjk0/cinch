@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   createCircle,
+  claimedParty,
   toSettlementRecord,
   recordSettlement,
   rollForward,
@@ -89,12 +90,12 @@ describe("circle — merge", () => {
   it("unions parties and obligations without losing local data", () => {
     const local: Circle = {
       ...createCircle({ name: "t" }),
-      parties: [{ address: A, name: "Alice" }],
+      parties: [claimedParty(A, "Alice")],
       obligations: [ob("a")],
     };
     const incoming: Circle = {
       ...createCircle({ name: "t" }),
-      parties: [{ address: B, name: "Bob" }],
+      parties: [claimedParty(B, "Bob")],
       obligations: [ob("b")],
     };
     const merged = mergeCircle(local, incoming);

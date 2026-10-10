@@ -12,27 +12,27 @@
  */
 
 import type { Obligation, Token } from "./types";
-import { createCircle, newId, type Circle, type Party, type Cadence } from "./circle";
+import { createCircle, newId, claimedParty, type Circle, type Party, type Cadence } from "./circle";
 import { addressForName } from "./csv";
 import { isAddress, shortAddress } from "./money";
 
 /** Turn a typed name or 0x address into a party. */
 export function toParty(input: string): Party {
   const v = input.trim();
-  if (isAddress(v)) return { address: v, name: shortAddress(v) };
-  return { address: addressForName(v.toLowerCase()), name: v };
+  if (isAddress(v)) return claimedParty(v, shortAddress(v));
+  return claimedParty(addressForName(v.toLowerCase()), v);
 }
 
 /** Split `amount` of `token` equally; the payer owes nothing to themselves. */
 export function splitEqually(amountUnits: bigint, members: Party[], payer: Party): Omit<Obligation, "id" | "token" | "reference">[] {
-  const owers = members.filter((m) => m.address.toLowerCase() !== payer.address.toLowerCase());
+  const owers = members.filter((m) => m.address!.toLowerCase() !== payer.address!.toLowerCase());
   const n = BigInt(members.length);
   if (n === 0n || owers.length === 0) return [];
   const base = amountUnits / n;
   const remainder = amountUnits - base * n; // distributed to the first owers
   return owers.map((m, i) => ({
-    debtor: m.address,
-    creditor: payer.address,
+    debtor: m.address!,
+    creditor: payer.address!,
     // The payer's own share stays with the payer; owers split the rest, with the
     // rounding remainder landing on the earliest owers so the sum is exact.
     amount: base + (BigInt(i) < remainder ? 1n : 0n),
@@ -54,7 +54,7 @@ export function splitExpenseObligations(input: SplitInput): { parties: Party[]; 
   // The full group that shares the cost: payer + members, de-duplicated by address.
   const group: Party[] = [];
   for (const p of [payer, ...input.members.map(toParty)]) {
-    if (!group.some((x) => x.address.toLowerCase() === p.address.toLowerCase())) group.push(p);
+    if (!group.some((x) => x.address!.toLowerCase() === p.address!.toLowerCase())) group.push(p);
   }
   const legs = splitEqually(input.amount, group, payer);
   const obligations: Obligation[] = legs.map((l) => ({
@@ -98,11 +98,11 @@ export function buildPayrollCircle(input: PayrollInput): Circle {
   input.lines.forEach((line, i) => {
     if (line.amount <= 0n) return;
     const r = toParty(line.recipient);
-    if (!parties.some((p) => p.address.toLowerCase() === r.address.toLowerCase())) parties.push(r);
+    if (!parties.some((p) => p.address!.toLowerCase() === r.address!.toLowerCase())) parties.push(r);
     obligations.push({
       id: newId("o"),
-      debtor: funder.address,
-      creditor: r.address,
+      debtor: funder.address!,
+      creditor: r.address!,
       amount: line.amount,
       token: input.token,
       reference: input.reference.trim() ? `${input.reference.trim()} #${i + 1}` : `payroll #${i + 1}`,

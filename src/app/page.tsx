@@ -22,10 +22,11 @@ export default function HomePage() {
               <h1 className="display" style={{ fontSize: "clamp(2.7rem, 5.8vw, 4.3rem)" }}>
                 Clear the circle,<br />not every debt.
               </h1>
-              <p className="lead" style={{ maxWidth: "47ch", margin: "22px 0 34px" }}>
-                Cinch nets a tangle of IOUs down to the fewest possible transfers, then settles the
-                whole cleared circle in one atomic transaction. Nobody goes first. Nobody is left
-                short.
+              <p className="lead" style={{ maxWidth: "52ch", margin: "22px 0 34px" }}>
+                Cinch is a self-custodial, multilateral settlement clearinghouse on Tempo. It takes a
+                tangle of who-owes-whom, nets it down to the fewest possible transfers, and settles
+                the whole cleared circle in one atomic transaction — so everyone pays only their net.
+                Nobody goes first. Nobody is left short.
               </p>
               <div className="row wrap" style={{ gap: 12 }}>
                 <Link href="/app" className="btn btn-primary btn-lg">
@@ -188,7 +189,7 @@ export default function HomePage() {
             FAQ
           </p>
           <h2 className="display" style={{ fontSize: "clamp(1.8rem, 3.6vw, 2.5rem)" }}>
-            Questions?
+            Frequently asked questions
           </h2>
         </div>
         <div>

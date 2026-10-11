@@ -24,9 +24,9 @@ export default function HomePage() {
               </h1>
               <p className="lead" style={{ maxWidth: "52ch", margin: "22px 0 34px" }}>
                 Cinch is a self-custodial, multilateral settlement clearinghouse on Tempo. It takes a
-                tangle of who-owes-whom, nets it down to the fewest possible transfers, and settles
-                the whole cleared circle in one atomic transaction — so everyone pays only their net.
-                Nobody goes first. Nobody is left short.
+                tangle of IOUs, nets it down to the fewest possible transfers, and settles the whole
+                cleared circle in one atomic transaction — so everyone pays only their net. Nobody
+                goes first. Nobody is left short.
               </p>
               <div className="row wrap" style={{ gap: 12 }}>
                 <Link href="/app" className="btn btn-primary btn-lg">

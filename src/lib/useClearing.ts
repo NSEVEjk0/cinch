@@ -40,7 +40,20 @@ import {
   readPermitContext,
   readPermitContextPublic,
   accountSendCall,
+  accountConvert,
 } from "./cinchAccount";
+import {
+  getSellQuote,
+  planFundingConversions,
+  withSlippage,
+  encodeDexApprove,
+  encodeDexSwap,
+  type Conversion,
+  type Debit,
+  type Holding,
+} from "./crossCurrency";
+import { readBalance } from "./chain";
+import { STABLECOIN_DEX } from "./tempo";
 import {
   postAuthorization,
   fetchAuthorizations,
@@ -91,6 +104,14 @@ export function useClearing(circle: Circle, result: ClearingResult) {
   const [error, setError] = useState<string | null>(null);
   const [txRef, setTxRef] = useState<string>("");
 
+  // Cross-currency funding: my balances per token, the DEX conversion plan
+  // that covers any shortfall, and conversion execution state.
+  const [balances, setBalances] = useState<Record<string, bigint> | null>(null);
+  const [conversions, setConversions] = useState<Conversion[] | null>(null);
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+  const [convertError, setConvertError] = useState<string | null>(null);
+  const [convertDone, setConvertDone] = useState<string[]>([]);
+
   const refresh = useCallback(async () => {
     if (!isMultiParty || !clearing) return;
     const auths = await fetchAuthorizations(roundId);
@@ -117,21 +138,154 @@ export function useClearing(circle: Circle, result: ClearingResult) {
   const iHaveAuthorized = !!me && authorizedPayers.has(me.toLowerCase());
   const allAuthorized = payers.every((p) => authorizedPayers.has(p.toLowerCase()));
 
-  /** My net debit, formatted per token (a payer may owe in several stablecoins). */
-  const myDebitLabel = useMemo(() => {
-    if (!me) return "";
+  /** My net debit per token (a payer may owe in several stablecoins). */
+  const myDebitByToken = useMemo(() => {
+    if (!me) return new Map<string, bigint>();
     const byToken = new Map<string, bigint>();
     for (const l of legs) {
       if (l.from.toLowerCase() !== me.toLowerCase()) continue;
       byToken.set(l.token.toLowerCase(), (byToken.get(l.token.toLowerCase()) ?? 0n) + l.amount);
     }
+    return byToken;
+  }, [me, legs]);
+
+  /** My net debit, formatted per token. */
+  const myDebitLabel = useMemo(() => {
     const parts: string[] = [];
-    for (const [addr, amount] of byToken) {
+    for (const [addr, amount] of myDebitByToken) {
       const t = network.tokens.find((x) => x.address.toLowerCase() === addr);
       parts.push(t ? `${formatAmount(amount, t.decimals)} ${t.symbol}` : amount.toString());
     }
     return parts.join(" + ");
-  }, [me, legs, network.tokens]);
+  }, [myDebitByToken, network.tokens]);
+
+  // Load my balances across the network's stablecoins when I'm a payer, so the
+  // conversion planner can see what I hold vs. what I owe.
+  useEffect(() => {
+    if (!me || !iAmPayer) {
+      setBalances(null);
+      setConversions(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const entries = await Promise.all(
+          network.tokens.map(async (t) => {
+            try {
+              const bal = await readBalance(me as Hex, t.address, network);
+              return [t.address.toLowerCase(), bal] as const;
+            } catch {
+              return [t.address.toLowerCase(), -1n] as const;
+            }
+          })
+        );
+        if (!cancelled) setBalances(Object.fromEntries(entries));
+      } catch {
+        if (!cancelled) setBalances(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [me, iAmPayer, network]);
+
+  // Plan conversions that fund any shortfall: what I owe in a token beyond what
+  // I hold of it, covered by selling surplus I hold in other stablecoins.
+  useEffect(() => {
+    if (!iAmPayer || !me || !balances) {
+      setConversions(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const debits: Debit[] = [];
+        for (const [addr, amount] of myDebitByToken) {
+          const t = network.tokens.find((x) => x.address.toLowerCase() === addr);
+          if (!t) continue;
+          const prev = debits.find((d) => d.token.address.toLowerCase() === t.address.toLowerCase());
+          if (prev) prev.amount += amount;
+          else debits.push({ token: t, amount });
+        }
+        const holdings: Holding[] = network.tokens
+          .filter((t) => (balances[t.address.toLowerCase()] ?? 0n) > 0n)
+          .map((t) => ({ token: t, balance: balances[t.address.toLowerCase()] }));
+        const plan = await planFundingConversions(debits, holdings, (from, to, amt) =>
+          getSellQuote(network, from.address, to.address, amt)
+        );
+        if (!cancelled) setConversions(plan);
+      } catch {
+        if (!cancelled) setConversions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [iAmPayer, me, myDebitByToken, balances, network]);
+
+  /** Execute one planned conversion (approve + swap via the DEX). */
+  const doConvert = useCallback(
+    async (conv: Conversion) => {
+      if (!me) return;
+      setConvertError(null);
+      setConvertingId(conv.id);
+      try {
+        const minOut = withSlippage(conv.expectedOut);
+        if (kind === "cinch") {
+          const key = storedKey();
+          if (!key) throw new Error("Create your Cinch account to convert.");
+          await accountConvert(network, key, conv.from, conv.to, conv.amountIn, minOut);
+        } else {
+          if (chainId !== network.chainId) {
+            await switchChainAsync({ chainId: network.chainId });
+          }
+          const approveHash = await sendTransactionAsync({
+            to: conv.from.address,
+            data: encodeDexApprove(conv.from.address, conv.amountIn),
+            chainId: network.chainId,
+          } as never);
+          await publicClient!.waitForTransactionReceipt({ hash: approveHash, timeout: 60_000 });
+          const swapHash = await sendTransactionAsync({
+            to: STABLECOIN_DEX,
+            data: encodeDexSwap(conv.from.address, conv.to.address, conv.amountIn, minOut),
+            chainId: network.chainId,
+          } as never);
+          await publicClient!.waitForTransactionReceipt({ hash: swapHash, timeout: 60_000 });
+        }
+        setConvertDone((d) => [...d, conv.id]);
+        // Refresh balances so the plan reflects the new funding.
+        try {
+          const entries = await Promise.all(
+            network.tokens.map(async (t) => {
+              try {
+                const bal = await readBalance(me as Hex, t.address, network);
+                return [t.address.toLowerCase(), bal] as const;
+              } catch {
+                return [t.address.toLowerCase(), -1n] as const;
+              }
+            })
+          );
+          setBalances(Object.fromEntries(entries));
+        } catch {
+          // Keep the previous balances; the next plan pass will re-read.
+        }
+      } catch (err) {
+        setConvertError(
+          err instanceof Error ? err.message.split("\n")[0].slice(0, 180) : "Conversion failed."
+        );
+      } finally {
+        setConvertingId(null);
+      }
+    },
+    [me, kind, network, chainId, switchChainAsync, sendTransactionAsync, publicClient]
+  );
+
+  /** Any planned conversions not yet executed. */
+  const pendingConversions = useMemo(
+    () => (conversions ?? []).filter((c) => !convertDone.includes(c.id)),
+    [conversions, convertDone]
+  );
 
   /** The payer signs a permit per token + the Authorization, then publishes it. */
   const authorize = useCallback(async () => {
@@ -251,6 +405,11 @@ export function useClearing(circle: Circle, result: ClearingResult) {
     authorizedPayers,
     allAuthorized,
     myDebitLabel,
+    conversions,
+    pendingConversions,
+    convertingId,
+    convertError,
+    doConvert,
     roundId,
     status,
     error,

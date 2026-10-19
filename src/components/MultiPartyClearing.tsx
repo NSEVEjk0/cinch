@@ -16,7 +16,7 @@ import type { ClearingResult } from "@/lib/types";
 import { useClearing } from "@/lib/useClearing";
 import { confirmSettlement, type ChainConfirmation } from "@/lib/chain";
 import { useNetwork } from "@/lib/useNetwork";
-import { shortAddress } from "@/lib/money";
+import { shortAddress, formatAmount } from "@/lib/money";
 import { explorerTxUrl } from "@/lib/tempo";
 
 export function MultiPartyClearing({
@@ -239,6 +239,53 @@ export function MultiPartyClearing({
             <span className="faint">Leaves your wallet</span>
             <span className="mono tnum" style={{ fontWeight: 600, fontSize: "1.05rem" }}>{c.myDebitLabel}</span>
           </div>
+
+          {/* Cross-currency funding: convert surplus stablecoins into the ones
+              you owe, via the enshrined DEX, before signing. */}
+          {c.pendingConversions.length > 0 ? (
+            <div
+              style={{
+                padding: "12px 14px",
+                border: "1px solid var(--line)",
+                borderRadius: "var(--r-sm)",
+                background: "var(--surface-2)",
+                marginBottom: 14,
+              }}
+            >
+              <div className="row" style={{ gap: 8, marginBottom: 8 }}>
+                <span style={{ color: "var(--amber-400)" }}>⇄</span>
+                <span style={{ fontWeight: 540, fontSize: "0.9rem" }}>
+                  Convert to fund this payment
+                </span>
+              </div>
+              {c.pendingConversions.map((conv) => (
+                <div key={conv.id} className="between" style={{ padding: "6px 0", gap: 10, alignItems: "flex-start" }}>
+                  <span className="mono" style={{ fontSize: "0.84rem", minWidth: 0, overflowWrap: "anywhere" }}>
+                    Sell {formatAmount(conv.amountIn, conv.from.decimals)} {conv.from.symbol} →{" "}
+                    ~{formatAmount(conv.expectedOut, conv.to.decimals)} {conv.to.symbol}
+                  </span>
+                  <button
+                    className="btn btn-quiet btn-sm"
+                    style={{ flexShrink: 0 }}
+                    onClick={() => void c.doConvert(conv)}
+                    disabled={c.convertingId !== null}
+                  >
+                    {c.convertingId === conv.id ? "Converting…" : "Convert"}
+                  </button>
+                </div>
+              ))}
+              <p className="faint" style={{ fontSize: "0.76rem", margin: "8px 0 0", lineHeight: 1.6 }}>
+                You hold these in other stablecoins. Cinch swaps them at the enshrined DEX rate in
+                one sponsored transaction, so your payment is funded.
+              </p>
+              {c.convertError ? (
+                <p style={{ color: "var(--rose-400)", fontSize: "0.8rem", margin: "8px 0 0" }}>
+                  {c.convertError}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <p className="faint" style={{ fontSize: "0.82rem", margin: "0 0 18px", lineHeight: 1.6 }}>
             This is a gasless signature — nothing moves now. The amount above leaves your wallet only
             once every payer has signed and the circle clears, all in one atomic transaction.

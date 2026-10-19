@@ -31,7 +31,9 @@ import type { TempoCall } from "./batch";
 import { TRANSFER_WITH_MEMO_ABI, encodeMemo } from "./batch";
 import type { Token } from "./types";
 import type { TempoNetwork } from "./tempo";
+import { STABLECOIN_DEX } from "./tempo";
 import { resolveRefFromResult } from "./txref";
+import { encodeDexApprove, encodeDexSwap } from "./crossCurrency";
 
 type Hex = `0x${string}`;
 
@@ -233,6 +235,35 @@ export async function accountSendToken(
     meta: { recipient: to, amount, tokenSymbol: token.symbol, references: note ? [note] : [] },
   };
   return accountSettle(network, key, [call]);
+}
+
+/**
+ * Convert one stablecoin to another through the enshrined DEX, as a single
+ * sponsored atomic batch (approve + swap). The payer keeps holding the same
+ * total value — the token just changes to one they can settle in. Returns the
+ * transaction reference.
+ */
+export async function accountConvert(
+  network: TempoNetwork,
+  key: Hex,
+  tokenIn: Token,
+  tokenOut: Token,
+  amountIn: bigint,
+  minAmountOut: bigint
+): Promise<string> {
+  const calls: TempoCall[] = [
+    {
+      to: tokenIn.address as Hex,
+      data: encodeDexApprove(tokenIn.address as Hex, amountIn),
+      meta: { recipient: STABLECOIN_DEX, amount: amountIn, tokenSymbol: tokenIn.symbol, references: ["dex:approve"] },
+    },
+    {
+      to: STABLECOIN_DEX,
+      data: encodeDexSwap(tokenIn.address as Hex, tokenOut.address as Hex, amountIn, minAmountOut),
+      meta: { recipient: tokenOut.address as Hex, amount: minAmountOut, tokenSymbol: tokenOut.symbol, references: ["dex:swap"] },
+    },
+  ];
+  return accountSettle(network, key, calls);
 }
 
 /** Read the account's balance of a token, formatted. */

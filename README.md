@@ -41,8 +41,9 @@ ledger or a trusted spreadsheet, and someone always has to go first.
   rather than failing the whole round.
 - **Standing circles.** A DAO, a market, or a fleet can accumulate obligations
   across a period and net + settle on a cadence.
-- **Multi-stablecoin netting.** Obligations in different stablecoins net through
-  Tempo's enshrined stablecoin exchange inside one settlement.
+- **Multi-stablecoin netting.** Obligations in different stablecoins net per
+  token inside one settlement, and a payer who holds the wrong stablecoin can
+  convert it at Tempo's enshrined stablecoin exchange with one tap.
 - **Reconciles itself.** Every settled leg carries the invoice references it
   discharges in its on-chain memo.
 - **Disputes don't block.** Flag an obligation and it is held out of the round;
@@ -67,8 +68,12 @@ Each payer signs with **their own wallet** — connect an existing one
 (MetaMask/Rabby/EIP-6963) or use the built-in self-custodial Cinch account; both
 produce the same EIP-712 signatures. Obligations may be denominated in **several
 Tempo stablecoins** at once: the engine nets per token and a single `clear()`
-settles the mixed-token legs together (cross-stablecoin *conversion* via Tempo's
-enshrined DEX is on the roadmap).
+settles the mixed-token legs together. If a payer owes in a stablecoin they
+don't hold, Cinch offers a **one-tap conversion** through Tempo's enshrined
+orderbook DEX (`STABLECOIN_DEX`): it quotes the live rate, then swaps the
+payer's surplus stablecoin into the one they owe — as a single sponsored atomic
+batch (approve + swap) — so the payment is funded before they authorize. See
+`src/lib/crossCurrency.ts`.
 
   The organiser then submits a single `clear()` that pulls every leg
   debtor→creditor with `transferFromWithMemo`. Because each signature commits to

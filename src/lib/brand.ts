@@ -146,28 +146,28 @@ export const FEATURES = [
 /** Where Cinch clears — the market, made concrete for anyone sizing it up. */
 export const USE_CASES = [
   {
-    title: "DAOs & contributor payouts",
-    body: "Grants, bounties, and reimbursements loop between a treasury and its contributors all month. A standing circle nets them into one clearing instead of a hundred separate transfers.",
+    title: "DAOs & Contributor Payouts",
+    body: "Grants, bounties, and reimbursements loop between treasuries and contributors all month. Cinch condenses dozens of back-and-forth claims into a single clearing round instead of endless individual transactions.",
   },
   {
-    title: "Marketplaces & platforms",
-    body: "Platform fees run one way, seller payouts the other. Cinch nets them so money moves once at its true net, not gross in both directions.",
+    title: "Marketplaces & Platforms",
+    body: "Platform fees flow one way, seller payouts the other. Cinch nets them continuously so capital moves once at its true net balance—never gross in both directions.",
   },
   {
-    title: "Supplier & vendor chains",
-    body: "Businesses that both buy from and sell to each other carry offsetting invoices. Clear the net balance in a single settlement rather than paying every invoice gross.",
+    title: "Supplier & Vendor Chains",
+    body: "Businesses that buy from and sell to each other routinely lock up cash on offsetting invoices. Cinch clears the net difference in a single atomic sweep rather than settling every invoice gross.",
   },
   {
-    title: "Payroll & teams",
-    body: "A one-to-many run compiles straight into a circle and settles as a single sponsored atomic transaction — everyone paid together, touching zero gas.",
+    title: "Payroll & Teams",
+    body: "Compile complex, one-to-many payout runs into a unified atomic cycle. Everyone gets paid simultaneously in a sponsored transaction—zero gas, zero sequencing hassle.",
   },
   {
-    title: "Funds & back offices",
-    body: "Inter-entity obligations net on a cadence and settle with an on-chain certificate attached, so the books reconcile straight from Tempo.",
+    title: "Funds & Back Offices",
+    body: "Net inter-entity obligations on a set cadence with cryptographic settlement certificates attached—allowing books to reconcile automatically straight from Tempo.",
   },
   {
-    title: "Groups & trips",
-    body: "The shared-expense case, finally finished: one netted settlement instead of a chain of IOUs and someone fronting the difference.",
+    title: "Groups & Trips",
+    body: "The shared-expense headache, solved forever: compress webs of group IOUs into one final netted settlement so nobody is left fronting the difference.",
   },
 ] as const;
 

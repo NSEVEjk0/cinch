@@ -13,16 +13,71 @@ export const BRAND = {
   repoUrl: "https://github.com/NSEVEjk0/cinch",
 } as const;
 
-/** The problem, stated plainly. */
+/** The problem: trapped capital & broken networks. */
 export const PROBLEM = {
-  heading: "Circular debt moves far more money than it needs to.",
-  body: "When several parties owe each other — a DAO and its contributors, suppliers in a chain, friends after a trip — the obligations loop. A owes B, B owes C, C owes A. Paid one by one, that is a flurry of transfers for almost no change in anyone's real position. Today the only tools that fix it are a bank's internal ledger or a trusted spreadsheet, and someone always has to go first.",
+  heading: "The Problem: Trapped Capital & Broken Networks",
+  intro:
+    "Businesses trade constantly, inevitably creating circular obligations (A → B → C → A). Yet ordinary commerce still relies on bilateral payments — paying every invoice one-by-one, leaving massive network offsets on the table.",
+  points: [
+    {
+      title: "Sequencing Risk",
+      body: "Someone always has to pay first, causing cash-flow delays and idle capital across the cycle.",
+    },
+    {
+      title: "Inflated Liquidity Needs",
+      body: "Without network-wide netting, businesses maintain larger cash buffers and face higher transaction friction.",
+    },
+    {
+      title: "Operational Drag",
+      body: "Manual reconciliation, tracking, and invoice disputes frequently bottleneck entire cash cycles.",
+    },
+  ],
 } as const;
 
-/** The solution, stated just as plainly. */
+/** How traditional finance solves it — and why it fails everyday commerce. */
 export const SOLUTION = {
-  heading: "Net the whole circle, then settle it in one move.",
-  body: "Cinch is a multilateral clearinghouse. It gathers every obligation in a group, cancels the debts that loop, and reduces the rest to the fewest transfers anyone has to make — then settles that entire cleared circle as a single atomic transaction on Tempo. No one goes first. No one is left short. Here is how it works.",
+  heading: "How Traditional Finance Solves It (And Why It Fails Everyday Commerce)",
+  intro:
+    "Banks and large institutions solved this decades ago using centralized multilateral netting (like CLS for foreign exchange or CHIPS for wholesale clearing), compressing gross obligations into minimal net transfers and cutting funding needs by over 90%.",
+  points: [
+    {
+      title: "Exclusive & Closed",
+      body: "Built only for regulated banks, enterprise clearinghouses, or internal corporate treasury groups.",
+    },
+    {
+      title: "Heavy Intermediaries",
+      body: "Dependent on central operators, manual gatekeepers, and slow batch cycles.",
+    },
+    {
+      title: "Impractical for Open Networks",
+      body: "Too expensive, rigid, and complex for everyday suppliers, buyers, and freelancers.",
+    },
+  ],
+} as const;
+
+/** The Cinch solution. */
+export const CINCH_SOLUTION = {
+  heading: "The Solution: Cinch",
+  intro:
+    "Cinch closes the gap by bringing institutional-grade multilateral compression to open commercial networks for the first time.",
+  points: [
+    {
+      title: "Atomic Multi-Party Settlement",
+      body: "Resolves complex debt loops simultaneously so no one has to pay first — freezing out sequencing risk entirely.",
+    },
+    {
+      title: "Instant Liquidity Release",
+      body: "Frees trapped working capital immediately, matching the 90%+ efficiency gains banks enjoy.",
+    },
+    {
+      title: "Isolated Disputes",
+      body: "Prevents a single invoice disagreement from stalling the broader settlement chain.",
+    },
+    {
+      title: "Self-Custodial & Permissionless (Powered by Tempo)",
+      body: "Built on Tempo, Cinch delivers high-speed, low-cost on-chain settlements without trusting a centralized clearinghouse. Invoice references travel with every payment for effortless, automated accounting.",
+    },
+  ],
 } as const;
 
 /** How Cinch answers it. */

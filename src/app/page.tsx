@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { HeroDemo } from "@/components/HeroDemo";
-import { PROBLEM, SOLUTION, HOW, FEATURES, USE_CASES, WHY_TEMPO, FAQ } from "@/lib/brand";
+import { PROBLEM, SOLUTION, CINCH_SOLUTION, HOW, FEATURES, USE_CASES, WHY_TEMPO, FAQ } from "@/lib/brand";
 
 export default function HomePage() {
   return (
@@ -68,20 +68,69 @@ export default function HomePage() {
           <h2 className="display" style={{ fontSize: "clamp(1.9rem, 4vw, 2.9rem)" }}>
             {PROBLEM.heading}
           </h2>
-          <p className="lead" style={{ marginTop: 22 }}>{PROBLEM.body}</p>
+          <p className="lead" style={{ marginTop: 22 }}>{PROBLEM.intro}</p>
+          <div className="stack" style={{ gap: 14, marginTop: 28 }}>
+            {PROBLEM.points.map((p) => (
+              <div key={p.title} className="feature-card" style={{ padding: "18px 22px" }}>
+                <h3 className="display" style={{ fontSize: "1.05rem", marginBottom: 6, letterSpacing: "-0.02em" }}>
+                  {p.title}
+                </h3>
+                <p className="muted" style={{ fontSize: "0.94rem", lineHeight: 1.62, margin: 0 }}>
+                  {p.body}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ------------------------------ solution ---------------------------- */}
       <section className="shell section" style={{ paddingTop: 0 }}>
         <div style={{ maxWidth: 720 }}>
-          <p className="eyebrow" style={{ marginBottom: 20, color: "var(--pos)" }}>
-            The solution
+          <p className="eyebrow" style={{ marginBottom: 20 }}>
+            Why the old fix doesn't reach you
           </p>
           <h2 className="display" style={{ fontSize: "clamp(1.9rem, 4vw, 2.9rem)" }}>
             {SOLUTION.heading}
           </h2>
-          <p className="lead" style={{ marginTop: 22 }}>{SOLUTION.body}</p>
+          <p className="lead" style={{ marginTop: 22 }}>{SOLUTION.intro}</p>
+          <div className="stack" style={{ gap: 14, marginTop: 28 }}>
+            {SOLUTION.points.map((p) => (
+              <div key={p.title} className="feature-card" style={{ padding: "18px 22px" }}>
+                <h3 className="display" style={{ fontSize: "1.05rem", marginBottom: 6, letterSpacing: "-0.02em" }}>
+                  {p.title}
+                </h3>
+                <p className="muted" style={{ fontSize: "0.94rem", lineHeight: 1.62, margin: 0 }}>
+                  {p.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* --------------------------- cinch solution ------------------------- */}
+      <section className="shell section" style={{ paddingTop: 0 }}>
+        <div style={{ maxWidth: 720 }}>
+          <p className="eyebrow" style={{ marginBottom: 20, color: "var(--pos)" }}>
+            The solution
+          </p>
+          <h2 className="display" style={{ fontSize: "clamp(1.9rem, 4vw, 2.9rem)" }}>
+            {CINCH_SOLUTION.heading}
+          </h2>
+          <p className="lead" style={{ marginTop: 22 }}>{CINCH_SOLUTION.intro}</p>
+          <div className="stack" style={{ gap: 14, marginTop: 28 }}>
+            {CINCH_SOLUTION.points.map((p) => (
+              <div key={p.title} className="feature-card" style={{ padding: "18px 22px" }}>
+                <h3 className="display" style={{ fontSize: "1.05rem", marginBottom: 6, letterSpacing: "-0.02em" }}>
+                  {p.title}
+                </h3>
+                <p className="muted" style={{ fontSize: "0.94rem", lineHeight: 1.62, margin: 0 }}>
+                  {p.body}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

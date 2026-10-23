@@ -13,11 +13,59 @@ transaction. Nobody goes first. Nobody is left short.
 
 ## The problem
 
-When several parties owe each other — a DAO and its contributors, suppliers in
-a chain, friends after a trip — the obligations loop. A owes B, B owes C, C owes
-A. Paid one by one, that is a flurry of transfers for almost no change in
-anyone's real position. The only tools that fix it today are a bank's internal
-ledger or a trusted spreadsheet, and someone always has to go first.
+### 1. The core problem: trapped capital in commercial networks
+
+Everyday commerce creates inevitable circular obligations (A → B → C → A).
+Yet most businesses still settle bilaterally — paying every invoice in full,
+one transfer at a time. This leaves huge offsets on the table and creates
+severe drag:
+
+- **Sequencing risk:** "Who pays first?" concerns delay settlements and freeze
+  working capital across the chain.
+- **Wasted liquidity:** Un-netted obligations require larger cash buffers,
+  higher transaction volume, and elevated borrowing costs.
+- **Operational drag:** Manual reconciliation and isolated invoice disputes
+  often stall entire settlement cycles.
+
+### 2. How banks & CLS solve it (and their limitations)
+
+To eliminate this friction, global banking and institutional markets rely on
+centralized multilateral netting:
+
+- **How they do it:** Institutional clearinghouses — such as CLS (for foreign
+  exchange) and CHIPS (for interbank payments) — aggregate cross-market
+  obligations and run centralized compression algorithms. Instead of settling
+  gross amounts, they compress positions into tiny net balances, routinely
+  reducing liquidity requirements by over 90%.
+- **The limitations:**
+  - **Closed & exclusive:** designed strictly for regulated financial
+    institutions, major corporations, or internal intercompany treasuries.
+  - **Central counterparty risk:** relies on heavy, centralized intermediaries
+    (and novation) that introduce single points of failure, administrative
+    overhead, and high fees.
+  - **Opaque & inflexible:** operationally heavy, requiring centralized
+    custodianship and slow batch processes that are completely impractical for
+    open supply chains, small businesses, or freelancers.
+
+### 3. Why Cinch is better
+
+Cinch brings institutional-grade multilateral netting to any open commercial
+network without the traditional gatekeepers:
+
+- **Permissionless & accessible:** unlocks enterprise clearinghouse dynamics
+  for ordinary suppliers, buyers, and freelancers exchanging real-world
+  invoices.
+- **Atomic multi-party settlement:** resolves complex debt cycles
+  simultaneously in a single, trustless transaction. No one has to go first,
+  eliminating sequencing risk and counterparty default.
+- **Self-custodial & cheap (via Tempo):** powered by Tempo, Cinch executes
+  high-speed, low-cost atomic cycles on-chain. Capital stays in user control
+  rather than locked inside centralized settlement systems.
+- **Resilient to disputes:** single-invoice disagreements can be cleanly
+  isolated, ensuring un-disputed obligations clear smoothly without freezing
+  the entire network's liquidity.
+- **Built-in auditability:** every settlement carries on-chain invoice
+  references, simplifying reconciliation and accounting automatically.
 
 ## How it works
 

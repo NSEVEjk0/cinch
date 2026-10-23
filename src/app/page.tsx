@@ -157,7 +157,7 @@ export default function HomePage() {
       <section className="shell section" style={{ paddingTop: 64, borderTop: "1px solid var(--hairline)" }}>
         <div style={{ marginBottom: 40, maxWidth: 620 }}>
           <p className="eyebrow" style={{ marginBottom: 18 }}>
-            What makes it hold
+            What sets it apart
           </p>
           <h2 className="display" style={{ fontSize: "clamp(1.8rem, 3.6vw, 2.5rem)" }}>
             A clearinghouse, not a group-pay app.
@@ -181,10 +181,11 @@ export default function HomePage() {
       <section className="shell section" style={{ paddingTop: 64, borderTop: "1px solid var(--hairline)" }}>
         <div style={{ marginBottom: 40, maxWidth: 620 }}>
           <p className="eyebrow" style={{ marginBottom: 18 }}>
-            Where it clears
+            Where it can be used / applied
           </p>
           <h2 className="display" style={{ fontSize: "clamp(1.8rem, 3.6vw, 2.5rem)" }}>
-            Anywhere money loops back on itself.
+            Wherever B2B supply chains, commercial networks, and independent trade
+            partners experience circular or interconnected debt.
           </h2>
           <p className="muted" style={{ fontSize: "1rem", lineHeight: 1.62, marginTop: 16 }}>
             Netting is a treasury primitive banks have run for decades as clearing. Cinch brings it

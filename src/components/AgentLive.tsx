@@ -3,25 +3,36 @@
 import { useState } from "react";
 
 /**
- * Live Cinch Agent demo. Calls the agent service's /demo/run endpoint to
- * script a small circle of agents: they deliver services, bill each other,
- * and the agent settles the whole round atomically via clearWithStanding.
+ * Live Cinch Agent demo.
  *
- * The endpoint URL is configurable via NEXT_PUBLIC_CINCH_AGENT_URL (defaults
- * to the local agent on the VPS). When unreachable, we show a clear offline
- * state rather than failing.
+ * Calls the same-origin /api/agent-demo proxy, which forwards to the agent
+ * service server-side. (The agent runs on plain HTTP on the VPS; a browser on
+ * a secure page cannot fetch it directly due to mixed-content rules, so the
+ * Next.js route proxies it.)
  */
 
-const AGENT_URL =
-  process.env.NEXT_PUBLIC_CINCH_AGENT_URL ?? "http://127.0.0.1:4171";
+interface SettleEvent {
+  t: number;
+  roundId?: string;
+  txHash?: string;
+  gross?: number;
+  net?: number;
+  compression?: number;
+  transfers?: number;
+}
+
+interface DeferEvent {
+  t: number;
+  reason?: string;
+}
 
 interface DemoResult {
   ok?: boolean;
+  circleId?: string;
   bills?: number;
-  grossVolume?: string;
-  netVolume?: string;
-  compression?: number;
-  cleared?: { txHash?: string; transfers?: number; legs?: number } | null;
+  settled?: boolean;
+  settle?: SettleEvent | null;
+  defer?: DeferEvent | null;
   error?: string;
 }
 
@@ -35,7 +46,7 @@ export function AgentLive() {
     setPhase("running");
     setResult(null);
     try {
-      const res = await fetch(`${AGENT_URL}/demo/run`, {
+      const res = await fetch("/api/agent-demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rounds: 1 }),
@@ -50,7 +61,7 @@ export function AgentLive() {
     }
   }
 
-  const compressionPct = result?.compression != null ? Math.round(result.compression * 100) : null;
+  const compressionPct = result?.settle?.compression != null ? Math.round(result.settle.compression * 100) : null;
 
   return (
     <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -109,7 +120,7 @@ export function AgentLive() {
                   Gross obligations
                 </div>
                 <div style={{ fontSize: "1.9rem", fontWeight: 600, marginTop: 6 }}>
-                  {result.grossVolume} <span style={{ fontSize: "0.9rem", color: "var(--text-3)" }}>pathUSD</span>
+                  {result.settle?.gross ?? "—"} <span style={{ fontSize: "0.9rem", color: "var(--text-3)" }}>pathUSD</span>
                 </div>
               </div>
               <div className="stat-card">
@@ -117,7 +128,7 @@ export function AgentLive() {
                   Net settlement
                 </div>
                 <div style={{ fontSize: "1.9rem", fontWeight: 600, marginTop: 6, color: "var(--pos)" }}>
-                  {result.netVolume} <span style={{ fontSize: "0.9rem", color: "var(--text-3)" }}>pathUSD</span>
+                  {result.settle?.net ?? "—"} <span style={{ fontSize: "0.9rem", color: "var(--text-3)" }}>pathUSD</span>
                 </div>
               </div>
             </div>
@@ -129,15 +140,19 @@ export function AgentLive() {
               </div>
             )}
 
-            {result.cleared ? (
+            {result.settled && result.settle ? (
               <div style={{ padding: "14px 18px", borderRadius: "var(--r-md)", border: "1px solid var(--hairline)", background: "var(--surface)" }}>
                 <span className="mono" style={{ color: "var(--pos)", fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                  ✓ Settled atomically
+                  ✓ Settled atomically by the agent
                 </span>
                 <div style={{ marginTop: 8, fontSize: "0.9rem", color: "var(--text-2)", wordBreak: "break-all" }}>
-                  {result.cleared.transfers} transfers · {result.cleared.legs} legs ·{" "}
-                  <span className="mono" style={{ fontSize: "0.82rem" }}>{result.cleared.txHash}</span>
+                  {result.settle.transfers} transfers ·{" "}
+                  <span className="mono" style={{ fontSize: "0.82rem" }}>{result.settle.txHash}</span>
                 </div>
+              </div>
+            ) : result.defer ? (
+              <div style={{ padding: "14px 18px", borderRadius: "var(--r-md)", border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: "0.9rem", color: "var(--text-2)" }}>
+                The agent deferred this round: {result.defer.reason}
               </div>
             ) : (
               <div style={{ padding: "14px 18px", borderRadius: "var(--r-md)", border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: "0.9rem", color: "var(--text-2)" }}>

@@ -18,10 +18,12 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { createClient } from "@libsql/client";
-import { createPublicClient, http as viemHttp } from "viem";
+import { createPublicClient, http as viemHttp, keccak256 } from "viem";
 import { tempoModerato } from "viem/chains";
 import { createClient as createTempoClient, http as tempoHttp, Account } from "viem/tempo";
-import { runDemo } from "./demo.js";
+import { setupDemo } from "./demo.js";
+import { turso as tursoClient, policiesForCircle, latestCircle, savePolicy, saveCircle } from "./store.js";
+import { prepareSettlement, submitClearWithStanding } from "./settle.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "../..");
@@ -44,17 +46,6 @@ function readEnvLocal(key) {
   return m ? m[1].trim() : null;
 }
 
-// ---- Turso (shared circle store) ----
-let turso = null;
-function tursoClient() {
-  if (turso) return turso;
-  const url = process.env.TURSO_DATABASE_URL ?? readEnvLocal("TURSO_DATABASE_URL");
-  const authToken = process.env.TURSO_AUTH_TOKEN ?? readEnvLocal("TURSO_AUTH_TOKEN");
-  if (!url || !authToken) return null;
-  turso = createClient({ url, authToken });
-  return turso;
-}
-
 // ---- Tempo public client ----
 const pub = createPublicClient({ chain: tempoModerato, transport: viemHttp(RPC_URL) });
 
@@ -65,29 +56,6 @@ async function readBalance(owner) {
     functionName: "balanceOf",
     args: [owner],
   });
-}
-
-/** Decode a stored circle payload (base64 JSON from the app's encodeCircle). */
-function decodeCircle(payload) {
-  try {
-    const json = decodeURIComponent(Buffer.from(payload, "base64").toString("utf8"));
-    const circle = JSON.parse(json);
-    return {
-      id: circle.id,
-      name: circle.name,
-      obligations: (circle.obligations ?? []).map((o) => ({
-        id: o.id,
-        debtor: o.debtor,
-        creditor: o.creditor,
-        amount: BigInt(o.amount),
-        token: { address: o.token?.address ?? PATH_USD, symbol: o.token?.symbol ?? "pathUSD", decimals: o.token?.decimals ?? 6 },
-        reference: o.reference ?? o.id,
-        disputed: !!o.disputed,
-      })),
-    };
-  } catch {
-    return null;
-  }
 }
 
 class CinchAgent {
@@ -132,11 +100,7 @@ class CinchAgent {
 
   /** Fetch the latest circle from Turso (or null if not configured). */
   async fetchCircle() {
-    const c = tursoClient();
-    if (!c) return null;
-    const r = await c.execute("SELECT id, payload FROM circles ORDER BY updated_at DESC LIMIT 1");
-    if (r.rows.length === 0) return null;
-    return decodeCircle(String(r.rows[0].payload));
+    return latestCircle();
   }
 
   async tick() {
@@ -182,8 +146,34 @@ class CinchAgent {
           return;
         }
 
+        // Load standing policies for this circle's participants.
+        const policies = await policiesForCircle(circle.id);
+        const circleId = keccak256(new TextEncoder().encode(`cinch:${circle.id}`));
+        const prep = prepareSettlement({ circleId, transfers: net.transfers, policies });
+
+        if (!prep.ok) {
+          this.logEvent("defer", { reason: prep.reason, open: open.length });
+          return;
+        }
+
+        // The agent pays gas with its own key.
+        const organiserKey = process.env.CINCH_AGENT_KEY;
+        if (!organiserKey) {
+          this.logEvent("defer", { reason: "agent key not configured (CINCH_AGENT_KEY)" });
+          return;
+        }
+
+        const { txHash, roundId } = await submitClearWithStanding({
+          circleId,
+          legs: prep.legs,
+          permits: prep.permits,
+          standingAuths: prep.standingAuths,
+          organiserKey,
+        });
+
         this.logEvent("settle", {
-          roundId: net.transfers.length > 0 ? "round-" + Date.now() : null,
+          roundId,
+          txHash,
           gross,
           net: netVol,
           compression: Math.round(compression * 1000) / 10,
@@ -211,6 +201,12 @@ class CinchAgent {
     console.log(`[cinch-agent] watching every ${POLL_MS}ms (min compression ${MIN_COMPRESSION})`);
     setInterval(() => this.tick(), POLL_MS);
     setTimeout(() => this.tick(), 2000);
+  }
+
+  /** Force a tick and await its outcome (used by the demo). */
+  async tickOnce() {
+    await this.tick();
+    return this.lastRun;
   }
 }
 
@@ -251,13 +247,45 @@ const server = http.createServer((req, res) => {
     }));
   } else if (req.method === "POST" && req.url === "/demo/run") {
     readBody(req)
-      .then((body) => runDemo({ rounds: body.rounds ?? 1 }))
+      .then(async (body) => {
+        // Set up the demo circle + policies, then let the WATCHER settle it.
+        const setup = await setupDemo({ rounds: body.rounds ?? 1 });
+        await agent.tickOnce();
+        // Give the settlement a moment to land, then read the latest log entry.
+        const log = agent.log.slice(-20);
+        const settle = [...log].reverse().find((e) => e.kind === "settle");
+        const defer = [...log].reverse().find((e) => e.kind === "defer");
+        return {
+          ok: true,
+          circleId: setup.circleId,
+          bills: setup.obligations.length,
+          settled: !!settle,
+          settle: settle ?? null,
+          defer: defer ?? null,
+        };
+      })
       .then((story) => {
-        agent.logEvent("demo", { bills: story.bills, compression: Math.round((story.compression ?? 0) * 1000) / 10, cleared: !!story.cleared });
-        res.end(JSON.stringify({ ok: true, ...story }));
+        res.end(JSON.stringify(story));
       })
       .catch((e) => {
         res.statusCode = 500;
+        res.end(JSON.stringify({ ok: false, error: String(e.message ?? e) }));
+      });
+  } else if (req.method === "POST" && req.url === "/policy") {
+    // Register a participant's signed standing policy + permit for a circle.
+    readBody(req)
+      .then(async (body) => {
+        const { circleId, payer, standingAuth, permit } = body;
+        if (!circleId || !payer || !standingAuth || !permit) {
+          throw new Error("circleId, payer, standingAuth and permit required");
+        }
+        await savePolicy({ circleId, payer, standingAuth, permit });
+        agent.logEvent("policy", { circleId: String(circleId).slice(0, 10), payer });
+        return { ok: true };
+      })
+      .then((r) => res.end(JSON.stringify(r)))
+      .catch((e) => {
+        res.statusCode = 400;
         res.end(JSON.stringify({ ok: false, error: String(e.message ?? e) }));
       });
   } else {

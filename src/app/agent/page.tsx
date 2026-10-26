@@ -3,6 +3,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BackButton } from "@/components/BackButton";
 import { AgentLive } from "@/components/AgentLive";
+import { GrantPolicyPanel } from "@/components/GrantPolicyPanel";
 import { AGENT } from "@/lib/brand";
 
 export const metadata = { title: "Cinch Agent" };
@@ -28,6 +29,11 @@ export default function AgentPage() {
         {/* Live demo */}
         <div style={{ marginTop: 40 }}>
           <AgentLive />
+        </div>
+
+        {/* Grant a standing policy */}
+        <div style={{ marginTop: 24 }}>
+          <GrantPolicyPanel />
         </div>
 
         {/* How it works */}

@@ -219,10 +219,37 @@ The agent exposes:
 - `POST /demo/run` — scripted agent commerce: four agents deliver services,
   bill each other, sign standing policies, and the agent settles the round
   atomically via `clearWithStanding`
+- `POST /policy` — register a participant's signed standing policy + permit
 
 The demo is wired into the site at `/agent` (the "Live demo" panel). The agent
 service is a separate process; set `NEXT_PUBLIC_CINCH_AGENT_URL` if it runs on
-a different host than the web app.
+a different host than the web app. The agent pays gas with its own key
+(`CINCH_AGENT_KEY`); generate one and fund it via the Tempo faucet.
+
+### Using the agent (users & external agents)
+
+**Users** grant the agent a standing policy on the `/agent` page: pick a
+circle, set a max net debit per round, sign the standing authorization + permit
+with your Cinch account or wallet, and the agent can settle that circle for you
+without asking again.
+
+**External agents** can register debts through the public API:
+
+```bash
+curl -X POST https://cinch-tau.vercel.app/api/agent/bill \
+  -H "Content-Type: application/json" \
+  -d '{
+    "circleId": "your-circle-id",
+    "debtor": "0x...",
+    "creditor": "0x...",
+    "amount": "20.00",
+    "reference": "data-feed-invoice-42"
+  }'
+```
+
+The obligation is appended to the circle in the shared store; the Cinch Agent
+then nets and settles it under standing policy. (Demo-grade endpoint — no auth
+yet; authenticate agents before production.)
 
 ### On-chain verification
 

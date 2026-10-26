@@ -158,6 +158,83 @@ Cinch defaults to the **Moderato testnet** (chain 42431) so nothing real moves
 while you explore. Point it at mainnet (chain 4217) with
 `NEXT_PUBLIC_CINCH_NETWORK=mainnet`.
 
+## Cinch Agent — the clearing house that runs itself
+
+The agent economy is coming: agents that book, buy, and hire other agents on
+our behalf. When one agent delivers a service, it bills the other, and that
+debt needs clearing. **Cinch Agent** watches the web of obligations, nets it,
+and settles the whole circle atomically — under policy, with receipts, and zero
+human babysitting.
+
+### The problem
+
+Paid one-by-one, agent micro-debts stretch capital thin: every payment ties up
+funds in transit, fragments balances across dozens of counterparties, and burns
+fees at every hop. The more agents trade, the more of their capital is stuck in
+motion instead of doing work.
+
+### How it works
+
+1. **Agents transact & bill** — one agent delivers a service (a data feed, a
+   subtask, an API call) and bills the other. The debt is recorded on-chain,
+   signed by the debtor.
+2. **Cinch Agent watches** — it reads the open obligations, computes the
+   minimal multilateral settlement, and checks every net debtor is funded.
+3. **Settles under standing policy** — participants sign one standing
+   authorization: a policy capping their net debit per round. From then on the
+   agent settles rounds without asking again, atomically, on Tempo.
+
+### The standing-authorization primitive
+
+The contract's `clearWithStanding` is what makes autonomous settlement safe:
+
+- **Pre-authorized, not pre-funded.** A standing authorization is a signed
+  EIP-712 policy, not custody. The agent can net a payer into any round up to
+  their cap — but it never holds their keys or their money.
+- **The round is bound to the circle.** `roundId` must equal
+  `keccak256(abi.encode(circleId, keccak256(abi.encode(legs))))`, so the agent
+  cannot invent legs or pull funds outside the circle's deterministic netting
+  output.
+- **Policy is enforced on-chain.** The contract verifies each standing
+  authorization against the exact circle and leg set, enforces the per-round
+  debit cap, and rejects expired policies (`validUntil`).
+- **Permits still grant allowance.** Standing authorization covers *who may
+  settle*; an EIP-2612 permit still grants the token allowance the transfer
+  needs. Both are signed once per payer.
+- **Mix and match.** Payers without a standing auth can still sign the exact
+  per-round `Authorization` — both paths can coexist in one round.
+
+### Running the agent
+
+```bash
+cd agent
+npm install
+node src/index.js          # watches the shared circle store, settles under policy
+```
+
+The agent exposes:
+- `GET /status` — what it's watching and its last decision
+- `GET /log` — the reasoning log (observe / propose / settle / hold)
+- `GET /stats` — rounds settled, gross vs net volume
+- `POST /demo/run` — scripted agent commerce: four agents deliver services,
+  bill each other, sign standing policies, and the agent settles the round
+  atomically via `clearWithStanding`
+
+The demo is wired into the site at `/agent` (the "Live demo" panel). The agent
+service is a separate process; set `NEXT_PUBLIC_CINCH_AGENT_URL` if it runs on
+a different host than the web app.
+
+### On-chain verification
+
+`test/clearing.onchain.test.ts` proves the standing path against the deployed
+contract on Moderato: two payers sign standing policies, the agent settles a
+round with **no per-round authorizations**, balances move exactly, and the
+round cannot be replayed. Run it with:
+
+```bash
+CINCH_ONCHAIN=1 npx vitest run test/clearing.onchain.test.ts
+```
+
 ## The netting engine
 
 The core (`src/lib/netting.ts`) is pure, deterministic `bigint` logic:

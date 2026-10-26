@@ -144,11 +144,13 @@ button {
   padding: 0 40px;
 }
 .section {
-  padding: 112px 0;
+  padding-top: 112px;
+  padding-bottom: 112px;
 }
 @media (max-width: 760px) {
   .section {
-    padding: 68px 0;
+    padding-top: 68px;
+    padding-bottom: 68px;
   }
 }
 
@@ -709,7 +711,7 @@ h1.display {
     gap: 12px;
   }
   .shell {
-    padding: 0 18px;
+    padding: 0 26px;
   }
   .nav-link-text {
     display: none;
@@ -723,7 +725,8 @@ h1.display {
     padding: 17px;
   }
   .section {
-    padding: 56px 0;
+    padding-top: 56px;
+    padding-bottom: 56px;
   }
   /* iOS zooms into any input whose text is < 16px on focus — pin to 16px so
      tapping a field doesn't jerk the whole page. */

@@ -229,3 +229,46 @@ export const FAQ = [
     a: "Cinch defaults to the Moderato testnet so nothing real moves while you explore. It targets Tempo mainnet by changing one setting.",
   },
 ] as const;
+
+/** The agent version — Cinch that runs itself. */
+export const AGENT = {
+  eyebrow: "For agents",
+  heading: "Cinch Agent — the clearing house that runs itself",
+  intro:
+    "The agent economy is coming: agents that book, buy, and hire other agents on our behalf. When one agent delivers a service, it bills the other, and that debt needs clearing. Cinch Agent watches the web of obligations, nets it, and settles the whole circle atomically — under policy, with receipts, and zero human babysitting.",
+  how: [
+    {
+      step: "01",
+      title: "Agents transact & bill",
+      body: "One agent delivers a service — a data feed, a subtask, an API call — and bills the other. The debt is recorded on-chain, signed by the debtor.",
+    },
+    {
+      step: "02",
+      title: "Cinch Agent watches",
+      body: "The agent reads the open obligations, computes the minimal multilateral settlement, and checks every net debtor is funded.",
+    },
+    {
+      step: "03",
+      title: "Settles under standing policy",
+      body: "Participants sign one standing authorization — a policy capping their net debit per round. From then on, the agent settles rounds without asking again, atomically, on Tempo.",
+    },
+  ],
+  benefits: [
+    {
+      title: "Pre-authorized, not pre-funded",
+      body: "A standing authorization is a signed policy, not custody. The agent can net you into any round up to your cap — but it never holds your keys or your money.",
+    },
+    {
+      title: "Zero babysitting",
+      body: "No per-round signatures, no chasing payers. Once a circle's participants sign their standing policies, the agent settles every worthwhile round on its own.",
+    },
+    {
+      title: "Policy is enforced on-chain",
+      body: "The contract verifies each standing authorization against the exact circle and leg set, enforces the per-round debit cap, and rejects expired policies. The agent cannot invent legs or overdraw.",
+    },
+    {
+      title: "Auditable reasoning",
+      body: "Every observation, proposal, and settlement is logged. Humans can review exactly why a round settled — or why it waited.",
+    },
+  ],
+} as const;

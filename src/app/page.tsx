@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { HeroDemo } from "@/components/HeroDemo";
-import { PROBLEM, SOLUTION, CINCH_SOLUTION, HOW, FEATURES, USE_CASES, WHY_TEMPO, FAQ } from "@/lib/brand";
+import { PROBLEM, SOLUTION, CINCH_SOLUTION, HOW, FEATURES, USE_CASES, WHY_TEMPO, AGENT, FAQ } from "@/lib/brand";
 
 export default function HomePage() {
   return (
@@ -229,6 +229,54 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* --------------------------- cinch agent --------------------------- */}
+      <section className="shell section" style={{ paddingTop: 64, borderTop: "1px solid var(--hairline)" }}>
+        <div style={{ marginBottom: 40, maxWidth: 720 }}>
+          <p className="eyebrow" style={{ marginBottom: 18, color: "var(--pos)" }}>
+            {AGENT.eyebrow}
+          </p>
+          <h2 className="display" style={{ fontSize: "clamp(1.8rem, 3.6vw, 2.5rem)" }}>
+            {AGENT.heading}
+          </h2>
+          <p className="lead" style={{ marginTop: 16 }}>{AGENT.intro}</p>
+        </div>
+        <div className="g3 stagger" style={{ marginBottom: 40 }}>
+          {AGENT.how.map((h) => (
+            <div key={h.step} className="feature-card">
+              <div className="mono" style={{ color: "var(--accent)", fontSize: "0.82rem", marginBottom: 16 }}>
+                {h.step}
+              </div>
+              <h3 className="display" style={{ fontSize: "1.12rem", marginBottom: 10, letterSpacing: "-0.02em" }}>
+                {h.title}
+              </h3>
+              <p className="muted" style={{ fontSize: "0.9rem", lineHeight: 1.62, margin: 0 }}>
+                {h.body}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="g2" style={{ gap: 1, background: "var(--hairline)", borderRadius: "var(--r-xl)", overflow: "hidden", border: "1px solid var(--hairline)" }}>
+          {AGENT.benefits.map((b) => (
+            <div key={b.title} style={{ padding: "22px 30px", background: "var(--surface)" }}>
+              <h3 className="display" style={{ fontSize: "1.05rem", marginBottom: 8, letterSpacing: "-0.02em" }}>
+                {b.title}
+              </h3>
+              <p className="muted" style={{ margin: 0, fontSize: "0.92rem", lineHeight: 1.58 }}>
+                {b.body}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 32, textAlign: "center" }}>
+          <Link href="/agent" className="btn btn-primary">
+            Watch the agent
+          </Link>
+          <span className="faint" style={{ marginLeft: 14, fontSize: "0.85rem" }}>
+            live demo · standing policies · atomic settlement
+          </span>
         </div>
       </section>
 

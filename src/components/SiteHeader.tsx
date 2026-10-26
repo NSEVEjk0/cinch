@@ -9,6 +9,7 @@ import { NetworkSwitch } from "./NetworkSwitch";
 const LINKS = [
   { href: "/app", label: "Circles" },
   { href: "/how", label: "How it works" },
+  { href: "/agent", label: "Agent" },
 ];
 
 export function SiteHeader() {

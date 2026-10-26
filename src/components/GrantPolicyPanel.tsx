@@ -137,12 +137,36 @@ export function GrantPolicyPanel() {
         s: ("0x" + raw2.slice(64, 128)) as Hex,
       };
 
-      // 3. Submit to the agent (via same-origin proxy).
+      // 3. Submit to the agent (via same-origin proxy). BigInts → strings for JSON.
       setStatus("submitting");
+      const wire = (v: bigint) => v.toString();
       const res = await fetch("/api/agent/policy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ circleId: circle.id, payer: identity.address, standingAuth, permit }),
+        body: JSON.stringify({
+          circleId: circle.id,
+          payer: identity.address,
+          standingAuth: {
+            circleId: standingAuth.circleId,
+            policy: {
+              token: standingAuth.policy.token,
+              maxNetDebitPerRound: wire(standingAuth.policy.maxNetDebitPerRound),
+              validUntil: wire(standingAuth.policy.validUntil),
+            },
+            v: standingAuth.v,
+            r: standingAuth.r,
+            s: standingAuth.s,
+          },
+          permit: {
+            token: permit.token,
+            owner: permit.owner,
+            value: wire(permit.value),
+            deadline: wire(permit.deadline),
+            v: permit.v,
+            r: permit.r,
+            s: permit.s,
+          },
+        }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error ?? "store failed");

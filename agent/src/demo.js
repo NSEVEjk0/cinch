@@ -45,10 +45,13 @@ const SERVICES = ["data feed", "compute", "subtask", "API access", "referral", "
 const AMOUNTS = [20, 15, 10, 6, 9, 12, 25, 18]; // pathUSD micro-units
 
 /**
- * Set up a demo circle: agents, obligations, standing policies + permits.
- * The watcher then settles it. Returns the circle + agent addresses.
+ * Set up the guided demo circle: "The DAO month-end".
+ *
+ * A fixed, believable scenario: four contributors traded services for a
+ * month. Each gets a standing policy + permit; the watcher then settles the
+ * web atomically via clearWithStanding. Returns the circle + story data.
  */
-export async function setupDemo({ rounds = 1 } = {}) {
+export async function setupDemo() {
   // 4 demo agents, each a real funded key.
   const agents = [];
   for (let i = 0; i < 4; i++) {
@@ -61,27 +64,25 @@ export async function setupDemo({ rounds = 1 } = {}) {
   const circleId = `demo_${Date.now().toString(36)}`;
   const circleKey = keccak256(new TextEncoder().encode(`cinch:${circleId}`));
 
-  // Obligations between agents.
-  const obligations = [];
-  for (let r = 0; r < rounds; r++) {
-    const n = 4 + Math.floor(Math.random() * 3);
-    for (let i = 0; i < n; i++) {
-      let debtor = agents[Math.floor(Math.random() * agents.length)];
-      let creditor = agents[Math.floor(Math.random() * agents.length)];
-      while (creditor.address === debtor.address) creditor = agents[Math.floor(Math.random() * agents.length)];
-      const amount = AMOUNTS[Math.floor(Math.random() * AMOUNTS.length)];
-      const memo = SERVICES[Math.floor(Math.random() * SERVICES.length)];
-      obligations.push({
-        id: `obl-${r}-${i}`,
-        debtor: debtor.address,
-        creditor: creditor.address,
-        amount: BigInt(amount * 1e6),
-        token: { address: PATH_USD, symbol: "pathUSD", decimals: 6 },
-        reference: `${memo}-${r}-${i}`,
-        disputed: false,
-      });
-    }
-  }
+  // Fixed scenario — deterministic, believable amounts (pathUSD micro-units).
+  const scenario = [
+    [0, 1, 20, "data feed"],
+    [1, 2, 15, "compute"],
+    [2, 0, 10, "subtask"],
+    [3, 1, 6, "hosting"],
+    [0, 3, 9, "referral"],
+    [1, 0, 12, "scheduled invoice"],
+  ];
+
+  const obligations = scenario.map(([d, c, amount, memo], i) => ({
+    id: `obl-${i}`,
+    debtor: agents[d].address,
+    creditor: agents[c].address,
+    amount: BigInt(amount * 1e6),
+    token: { address: PATH_USD, symbol: "pathUSD", decimals: 6 },
+    reference: `${memo}-${i}`,
+    disputed: false,
+  }));
 
   // Sign a standing policy + permit for each agent, store them.
   for (const a of agents) {
@@ -114,5 +115,12 @@ export async function setupDemo({ rounds = 1 } = {}) {
   };
   await saveCircle(circle);
 
-  return { circleId, circleKey, agents, obligations };
+  return {
+    circleId,
+    circleKey,
+    agents,
+    obligations,
+    scenario: "The DAO month-end",
+    bills: obligations.length,
+  };
 }

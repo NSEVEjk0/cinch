@@ -262,9 +262,9 @@ const server = http.createServer((req, res) => {
     }));
   } else if (req.method === "POST" && req.url === "/demo/run") {
     readBody(req)
-      .then(async (body) => {
-        // Set up the demo circle + policies, then let the WATCHER settle it.
-        const setup = await setupDemo({ rounds: body.rounds ?? 1 });
+      .then(async () => {
+        // Set up the guided demo circle + policies, then let the WATCHER settle it.
+        const setup = await setupDemo();
         await agent.tickOnce();
         // Give the settlement a moment to land, then read the latest log entry.
         const log = agent.log.slice(-20);
@@ -272,8 +272,9 @@ const server = http.createServer((req, res) => {
         const defer = [...log].reverse().find((e) => e.kind === "defer");
         return {
           ok: true,
+          scenario: setup.scenario,
           circleId: setup.circleId,
-          bills: setup.obligations.length,
+          bills: setup.bills,
           settled: !!settle,
           settle: settle ?? null,
           defer: defer ?? null,

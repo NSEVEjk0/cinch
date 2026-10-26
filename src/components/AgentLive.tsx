@@ -3,12 +3,12 @@
 import { useState } from "react";
 
 /**
- * Live Cinch Agent demo.
+ * Live Cinch Agent demo — "The DAO month-end".
  *
- * Calls the same-origin /api/agent-demo proxy, which forwards to the agent
- * service server-side. (The agent runs on plain HTTP on the VPS; a browser on
- * a secure page cannot fetch it directly due to mixed-content rules, so the
- * Next.js route proxies it.)
+ * Calls the same-origin /api/agent-demo proxy (the agent runs on plain HTTP on
+ * the VPS; a browser on this HTTPS page cannot fetch it directly). The agent
+ * scripts a fixed scenario, settles it under standing policy, and returns the
+ * story for the UI to present as a guided timeline.
  */
 
 interface SettleEvent {
@@ -28,6 +28,7 @@ interface DeferEvent {
 
 interface DemoResult {
   ok?: boolean;
+  scenario?: string;
   circleId?: string;
   bills?: number;
   settled?: boolean;
@@ -49,7 +50,7 @@ export function AgentLive() {
       const res = await fetch("/api/agent-demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rounds: 1 }),
+        body: JSON.stringify({}),
       });
       const data = (await res.json()) as DemoResult;
       if (!data.ok) throw new Error(data.error ?? "demo failed");
@@ -61,7 +62,7 @@ export function AgentLive() {
     }
   }
 
-  const compressionPct = result?.settle?.compression != null ? Math.round(result.settle.compression * 100) : null;
+  const savedPct = result?.settle?.compression != null ? Math.round(result.settle.compression * 100) : null;
 
   return (
     <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -72,11 +73,11 @@ export function AgentLive() {
               Live demo
             </p>
             <h2 className="display" style={{ fontSize: "1.4rem" }}>
-              Watch agents transact — then settle
+              {result?.scenario ?? "The DAO month-end"}
             </h2>
             <p className="muted" style={{ maxWidth: "56ch", marginTop: 10, fontSize: "0.95rem" }}>
-              Four agents deliver services, bill each other, and sign standing policies. The agent
-              nets the web and settles the whole round atomically — no per-round signatures.
+              Four contributors traded services for a month. Each signed a standing policy; the
+              agent nets the web and settles atomically — no per-round signatures.
             </p>
           </div>
           <button
@@ -85,7 +86,7 @@ export function AgentLive() {
             className="btn btn-primary"
             style={{ whiteSpace: "nowrap" }}
           >
-            {phase === "running" ? "Agents transacting…" : result ? "Run again" : "Run the demo"}
+            {phase === "running" ? "Agent working…" : result ? "Replay" : "Run the demo"}
           </button>
         </div>
       </div>
@@ -94,7 +95,7 @@ export function AgentLive() {
         {phase === "running" && (
           <p className="muted" style={{ margin: 0 }}>
             <span className="dot" style={{ display: "inline-block", marginRight: 8 }} />
-            Agents are delivering services and billing each other…
+            Agents are delivering services, signing policies, and settling…
           </p>
         )}
 
@@ -133,9 +134,9 @@ export function AgentLive() {
               </div>
             </div>
 
-            {compressionPct != null && (
+            {savedPct != null && (
               <div style={{ padding: "14px 18px", borderRadius: "var(--r-md)", background: "var(--pos-weak)", color: "var(--pos)", fontSize: "0.95rem" }}>
-                <strong>{compressionPct}%</strong> of gross volume removed by netting — the same
+                <strong>{savedPct}%</strong> of gross volume removed by netting — the same
                 liquidity-savings mechanism banks use (CLS cuts daily FX funding needs by 90%+).
               </div>
             )}

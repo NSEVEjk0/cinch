@@ -64,6 +64,7 @@ export function decodeCircle(payload) {
         token: { address: o.token?.address ?? "0x20c0000000000000000000000000000000000000", symbol: o.token?.symbol ?? "pathUSD", decimals: o.token?.decimals ?? 6 },
         reference: o.reference ?? o.id,
         disputed: !!o.disputed,
+        settled: !!o.settled,
       })),
     };
   } catch {

@@ -109,7 +109,7 @@ class CinchAgent {
     try {
       const circle = await this.fetchCircle();
       const obligations = circle?.obligations ?? [];
-      const open = obligations.filter((o) => !o.disputed);
+      const open = obligations.filter((o) => !o.disputed && !o.settled);
 
       this.lastRun = { at: Date.now(), circle: circle?.name ?? null, openCount: open.length };
 
@@ -170,6 +170,21 @@ class CinchAgent {
           standingAuths: prep.standingAuths,
           organiserKey,
         });
+
+        // Mark the settled obligations as settled in the shared store so the
+        // watcher doesn't re-attempt this round.
+        try {
+          const updated = await this.fetchCircle();
+          if (updated && updated.id === circle.id) {
+            const byId = new Set(open.map((o) => o.id));
+            updated.obligations = updated.obligations.map((o) =>
+              byId.has(o.id) ? { ...o, settled: true } : o
+            );
+            await saveCircle(updated);
+          }
+        } catch (e) {
+          this.logEvent("error", { message: `mark settled failed: ${String(e.message ?? e).slice(0, 120)}` });
+        }
 
         this.logEvent("settle", {
           roundId,

@@ -24,6 +24,7 @@ const input = {
     // Tempo targets the Osaka fork; a Cancun-compiled contract runs fine there
     // and keeps us off bleeding-edge solc evmVersion names.
     evmVersion: "cancun",
+    viaIR: true,
     outputSelection: {
       "*": { "*": ["abi", "evm.bytecode.object"] },
     },

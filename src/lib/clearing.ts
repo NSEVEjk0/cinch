@@ -154,6 +154,118 @@ export const AUTHORIZATION_TYPES = {
   ],
 } as const;
 
+/** A standing policy: how much of a token a payer allows per round, until a deadline. */
+export interface StandingPolicy {
+  token: Hex;
+  maxNetDebitPerRound: bigint;
+  validUntil: bigint; // 0 = never expires
+}
+
+/** A signed standing authorization (EIP-712 over circleId + policyHash). */
+export interface StandingAuth {
+  circleId: Hex;
+  policy: StandingPolicy;
+  v: number;
+  r: Hex;
+  s: Hex;
+}
+
+export const STANDING_TYPES = {
+  StandingAuthorization: [
+    { name: "circleId", type: "bytes32" },
+    { name: "policyHash", type: "bytes32" },
+  ],
+} as const;
+
+/** keccak256(abi.encode(policy)) — the value a signer commits to. */
+export function standingPolicyHash(policy: StandingPolicy): Hex {
+  return keccak256(
+    encodeAbiParameters(
+      [
+        { name: "token", type: "address" },
+        { name: "maxNetDebitPerRound", type: "uint256" },
+        { name: "validUntil", type: "uint256" },
+      ],
+      [policy.token, policy.maxNetDebitPerRound, policy.validUntil]
+    )
+  );
+}
+
+/** EIP-712 typed data for a StandingAuthorization over a circle + policy. */
+export function standingAuthTypedData(
+  network: TempoNetwork,
+  verifyingContract: Hex,
+  circleId: Hex,
+  policy: StandingPolicy
+) {
+  return {
+    domain: clearingDomain(network, verifyingContract),
+    types: STANDING_TYPES,
+    primaryType: "StandingAuthorization" as const,
+    message: { circleId, policyHash: standingPolicyHash(policy) },
+  };
+}
+
+/** The content id a round must equal to be bound to a circle: keccak256(abi.encode(circleId, keccak256(abi.encode(legs)))). */
+export function roundContentId(circleId: Hex, legs: Leg[]): Hex {
+  return keccak256(
+    encodeAbiParameters(
+      [
+        { name: "circleId", type: "bytes32" },
+        { name: "legsContent", type: "bytes32" },
+      ],
+      [circleId, keccak256(encodeAbiParameters([LEG_ARRAY_PARAM], [legs as never]))]
+    )
+  );
+}
+
+/** Encode the `clearWithStanding(roundId, legs, permits, standingAuths, auths)` call. */
+export function encodeClearWithStandingCall(
+  roundId: Hex,
+  legs: Leg[],
+  permits: Permit[],
+  standingAuths: StandingAuth[],
+  auths: Hex[]
+): Hex {
+  const STANDING_AUTH_COMPONENTS = [
+    { name: "circleId", type: "bytes32" },
+    {
+      name: "policy",
+      type: "tuple",
+      components: [
+        { name: "token", type: "address" },
+        { name: "maxNetDebitPerRound", type: "uint256" },
+        { name: "validUntil", type: "uint256" },
+      ],
+    },
+    { name: "v", type: "uint8" },
+    { name: "r", type: "bytes32" },
+    { name: "s", type: "bytes32" },
+  ] as const;
+
+  return encodeFunctionData({
+    abi: CLEARING_ABI,
+    functionName: "clearWithStanding",
+    args: [
+      roundId,
+      legs,
+      permits,
+      standingAuths.map((sa) => ({
+        circleId: sa.circleId,
+        policy: {
+          token: sa.policy.token,
+          maxNetDebitPerRound: sa.policy.maxNetDebitPerRound,
+          validUntil: sa.policy.validUntil,
+        },
+        v: sa.v,
+        r: sa.r,
+        s: sa.s,
+      })) as never,
+      auths,
+    ],
+  });
+}
+
 /** Typed data a debtor signs to authorize a round's exact leg set. */
 export function authorizationTypedData(
   network: TempoNetwork,

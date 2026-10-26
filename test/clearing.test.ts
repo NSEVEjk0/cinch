@@ -9,6 +9,10 @@ import {
   permitTypedData,
   splitSignature,
   encodeClearCall,
+  standingPolicyHash,
+  standingAuthTypedData,
+  roundContentId,
+  encodeClearWithStandingCall,
   CLEARING_ABI,
   type Leg,
 } from "@/lib/clearing";
@@ -176,6 +180,60 @@ describe("clearing — encodeClearCall", () => {
     expect(dLegs).toHaveLength(2);
     expect(dLegs[0].amount).toBe(10_000_000n);
     expect(dPermits).toHaveLength(1);
+    expect(dAuths).toEqual(auths);
+  });
+});
+
+describe("clearing — StandingAuthorization EIP-712", () => {
+  const policy = { token: PATH_USD.address, maxNetDebitPerRound: 25_000_000n, validUntil: 0n };
+
+  it("standingPolicyHash is deterministic and bound to the policy", () => {
+    const h1 = standingPolicyHash(policy);
+    expect(isHex(h1)).toBe(true);
+    expect(h1.length).toBe(66);
+    expect(standingPolicyHash(policy)).toBe(h1);
+    const changed = { ...policy, maxNetDebitPerRound: 30_000_000n };
+    expect(standingPolicyHash(changed)).not.toBe(h1);
+  });
+
+  it("round-trips: signing a StandingAuthorization recovers the signer", async () => {
+    const pk = generatePrivateKey();
+    const account = privateKeyToAccount(pk);
+    const circleId = ("0x" + "aa".repeat(32)) as Hex;
+    const td = standingAuthTypedData(MODERATO, CLEARING, circleId, policy);
+    const sig = await account.signTypedData(td);
+    const recovered = await recoverTypedDataAddress({ ...td, signature: sig });
+    expect(recovered.toLowerCase()).toBe(account.address.toLowerCase());
+  });
+
+  it("roundContentId binds a round to its circle and legs", () => {
+    const legs = buildLegs([transfer(A, B, 10_000_000n, ["a"])]);
+    const circleId = ("0x" + "aa".repeat(32)) as Hex;
+    const c1 = roundContentId(circleId, legs);
+    expect(c1).toBe(roundContentId(circleId, legs));
+    const otherCircle = ("0x" + "bb".repeat(32)) as Hex;
+    expect(roundContentId(otherCircle, legs)).not.toBe(c1);
+    const otherLegs = buildLegs([transfer(A, B, 11_000_000n, ["a"])]);
+    expect(roundContentId(circleId, otherLegs)).not.toBe(c1);
+  });
+
+  it("encodes a decodable clearWithStanding() call", () => {
+    const legs = buildLegs([transfer(A, B, 10_000_000n, ["a"])]);
+    const circleId = ("0x" + "aa".repeat(32)) as Hex;
+    const roundId = roundContentId(circleId, legs);
+    const standingAuths = [
+      { circleId, policy, v: 27, r: ("0x" + "11".repeat(32)) as Hex, s: ("0x" + "22".repeat(32)) as Hex },
+    ];
+    const auths = [("0x" + "ab".repeat(65)) as Hex];
+    const data = encodeClearWithStandingCall(roundId, legs, [], standingAuths, auths);
+    expect(isHex(data)).toBe(true);
+
+    const decoded = decodeFunctionData({ abi: CLEARING_ABI, data });
+    expect(decoded.functionName).toBe("clearWithStanding");
+    const [dRound, dLegs, , dStanding, dAuths] = decoded.args as unknown as [Hex, Leg[], unknown[], unknown[], Hex[]];
+    expect(dRound).toBe(roundId);
+    expect(dLegs).toHaveLength(1);
+    expect(dStanding).toHaveLength(1);
     expect(dAuths).toEqual(auths);
   });
 });

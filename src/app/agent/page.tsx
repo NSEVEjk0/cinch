@@ -3,6 +3,8 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BackButton } from "@/components/BackButton";
 import { AgentLive } from "@/components/AgentLive";
+import { AgentStats } from "@/components/AgentStats";
+import { AgentTimeline } from "@/components/AgentTimeline";
 import { GrantPolicyPanel } from "@/components/GrantPolicyPanel";
 import { AGENT } from "@/lib/brand";
 
@@ -26,9 +28,19 @@ export default function AgentPage() {
           {AGENT.intro}
         </p>
 
-        {/* Live demo */}
+        {/* Outcome metrics */}
         <div style={{ marginTop: 40 }}>
+          <AgentStats />
+        </div>
+
+        {/* Live demo */}
+        <div style={{ marginTop: 24 }}>
           <AgentLive />
+        </div>
+
+        {/* Decision timeline — the audit trail */}
+        <div style={{ marginTop: 24 }}>
+          <AgentTimeline />
         </div>
 
         {/* Grant a standing policy */}
